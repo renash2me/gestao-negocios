@@ -130,13 +130,62 @@ def build_sale_out(sale: Sale) -> SaleOut:
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/preview", response_model=SalePreviewOut)
-def preview_sale(
+class SaleTotalOut(BaseModel):
+    """Total da venda SEM expor custo/lucro — usado pelo operador no PDV."""
+    subtotal: Decimal
+    card_fee_amount: Decimal
+    total: Decimal
+    items_detail: list[dict]
+
+
+@router.post("/total", response_model=SaleTotalOut)
+def calc_total(
     data: SalePreviewIn,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Calcula lucro em tempo real. Chamado pelo PDV antes de confirmar."""
+    """Calcula o total da venda para o operador. Não retorna custo nem lucro."""
+    machine = None
+    if data.card_machine_id:
+        machine = db.query(CardMachine).filter(CardMachine.id == data.card_machine_id).first()
+
+    fee_rate = get_card_fee(data.payment_method, machine)
+    subtotal = Decimal("0")
+    items_detail = []
+
+    for item_in in data.items:
+        product = db.query(Product).filter(Product.id == item_in.product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Produto {item_in.product_id} não encontrado")
+        line = product.sale_price * item_in.quantity
+        subtotal += line
+        items_detail.append({
+            "product_id": product.id,
+            "name": product.name,
+            "quantity": item_in.quantity,
+            "unit_price": float(product.sale_price),
+            "line_total": float(line),
+        })
+
+    # A taxa de cartão é custo do negócio, não é repassada ao cliente.
+    # O total que o cliente paga é o subtotal. A taxa entra só no cálculo de lucro (admin).
+    card_fee_amount = (subtotal * fee_rate).quantize(Decimal("0.01"))
+
+    return SaleTotalOut(
+        subtotal=subtotal,
+        card_fee_amount=card_fee_amount,
+        total=subtotal,
+        items_detail=items_detail,
+    )
+
+
+@router.post("/preview", response_model=SalePreviewOut)
+def preview_sale(
+    data: SalePreviewIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Calcula lucro em tempo real. Restrito ao admin (BI)."""
     machine = None
     if data.card_machine_id:
         machine = db.query(CardMachine).filter(CardMachine.id == data.card_machine_id).first()

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../store/auth'
@@ -9,7 +10,8 @@ import { CheckoutModal } from '../components/CheckoutModal'
 import type { Product, CartItem, PaymentMethod } from '../lib/types'
 
 export function PdvPage() {
-  const { name, logout } = useAuth()
+  const { name, role, logout } = useAuth()
+  const navigate = useNavigate()
   const { sync } = useSaleSync()
   const [cart, setCart] = useState<CartItem[]>([])
   const [checkout, setCheckout] = useState(false)
@@ -79,6 +81,9 @@ export function PdvPage() {
         </div>
         <div style={styles.headerRight}>
           <SyncBadge />
+          {role === 'admin' && (
+            <button style={styles.adminBtn} onClick={() => navigate('/admin')}>Admin</button>
+          )}
           <button style={styles.logoutBtn} onClick={logout}>Sair</button>
         </div>
       </header>
@@ -165,6 +170,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   headerRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' },
   logoutBtn: { fontSize: '13px', color: 'var(--ink-soft)', fontWeight: 500 },
+  adminBtn: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--berry)',
+    padding: '5px 12px',
+    background: 'rgba(125,60,82,0.1)',
+    borderRadius: '6px',
+  },
   loading: { textAlign: 'center', padding: '60px', color: 'var(--ink-soft)' },
   grid: {
     display: 'grid',
