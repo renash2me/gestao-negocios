@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Paleta — doçaria artesanal: framboesa, creme, caramelo */
+  --berry: #7d3c52;
+  --berry-dark: #5c2a3c;
+  --berry-light: #a85574;
+  --cream: #fdf6f0;
+  --cream-dark: #f5e6d8;
+  --caramel: #c8956c;
+  --caramel-dark: #a8764f;
+  --gold: #d4a548;
+  --ink: #2e2228;
+  --ink-soft: #6b5a62;
+  --white: #ffffff;
+  --success: #4a7c59;
+  --success-light: #e3f0e6;
+  --danger: #b5483f;
+  --warning: #d4862a;
+  --warning-light: #fbf0dd;
+
+  --shadow-sm: 0 1px 3px rgba(46, 34, 40, 0.08);
+  --shadow-md: 0 4px 16px rgba(46, 34, 40, 0.12);
+  --shadow-lg: 0 12px 32px rgba(46, 34, 40, 0.18);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: var(--ink);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, select {
+  font-family: var(--font-body);
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 3px; }
