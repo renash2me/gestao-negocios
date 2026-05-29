@@ -1,0 +1,66 @@
+services:
+
+  backend:
+    image: ghcr.io/renash2me/gestao-negocios-backend:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      BUSINESS_NAME: ${BUSINESS_NAME:-Flores e Doces}
+      BUSINESS_LOGO_URL: ${BUSINESS_LOGO_URL:-}
+      DEFAULT_CARD_FEE_PERCENT: ${DEFAULT_CARD_FEE_PERCENT:-2.0}
+      DEFAULT_KWH_RATE: ${DEFAULT_KWH_RATE:-0.75}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - n8n_default
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gestao-flores-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)
+      - traefik.http.routers.gestao-flores-api.entrypoints=web,websecure
+      - traefik.http.routers.gestao-flores-api.tls=true
+      - traefik.http.routers.gestao-flores-api.tls.certresolver=mydnschallenge
+      - traefik.http.services.gestao-flores-api.loadbalancer.server.port=8000
+
+  frontend:
+    image: ghcr.io/renash2me/gestao-negocios-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - internal
+      - n8n_default
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gestao-flores.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.gestao-flores.entrypoints=web,websecure
+      - traefik.http.routers.gestao-flores.tls=true
+      - traefik.http.routers.gestao-flores.tls.certresolver=mydnschallenge
+      - traefik.http.services.gestao-flores.loadbalancer.server.port=80
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Postgres NÃO exposto pro host — acesso só via rede interna
+    # O workflow n8n de backup acessa via: docker exec gestao-flores-doces-db-1 pg_dump ...
+
+networks:
+  internal:
+    driver: bridge
+  n8n_default:
+    external: true
