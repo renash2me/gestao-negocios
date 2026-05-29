@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatBRL } from '../lib/format'
 import { useAuth } from '../store/auth'
 import { queueSale } from '../lib/db'
 import { useSaleSync } from '../hooks/useSaleSync'
@@ -103,7 +104,7 @@ export function PdvPage() {
                 {q > 0 && <span style={styles.qtyBadge}>{q}</span>}
                 <span style={styles.productName}>{p.name}</span>
                 <span style={styles.productPrice}>
-                  R$ {p.sale_price.toFixed(2).replace('.', ',')}
+                  {formatBRL(p.sale_price)}
                 </span>
                 {q > 0 && (
                   <span
@@ -129,7 +130,7 @@ export function PdvPage() {
             <span>Ver venda</span>
           </div>
           <span style={styles.cartTotal}>
-            R$ {total.toFixed(2).replace('.', ',')}
+            R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
       )}

@@ -12,6 +12,7 @@ router = APIRouter()
 class CustomerIn(BaseModel):
     name: str
     phone: str | None = None
+    location: str | None = None   # ex: "Ed. Villa Lobos"
     notes: str | None = None
 
 
@@ -19,6 +20,7 @@ class CustomerOut(BaseModel):
     id: int
     name: str
     phone: str | None
+    location: str | None
     notes: str | None
     model_config = {"from_attributes": True}
 
@@ -44,7 +46,7 @@ def update_customer(
 ):
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        raise HTTPException(status_code=404, detail="Cliente nao encontrado")
     for k, v in data.model_dump().items():
         setattr(customer, k, v)
     db.commit()

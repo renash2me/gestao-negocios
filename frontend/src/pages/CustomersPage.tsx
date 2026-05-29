@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatPhone, maskPhone, cleanPhone } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { page } from '../components/adminStyles'
 import type { Customer } from '../lib/types'
@@ -42,6 +43,7 @@ export function CustomersPage() {
             <tr>
               <th style={page.th}>Nome</th>
               <th style={page.th}>Telefone</th>
+              <th style={page.th}>Local / Prédio</th>
               <th style={page.th}>Ações</th>
             </tr>
           </thead>
@@ -49,7 +51,8 @@ export function CustomersPage() {
             {customers.map((c) => (
               <tr key={c.id}>
                 <td style={page.td}>{c.name}</td>
-                <td style={page.td}>{c.phone || '—'}</td>
+                <td style={page.td}>{formatPhone(c.phone)}</td>
+                <td style={page.td}>{c.location || '—'}</td>
                 <td style={page.td}>
                   <button style={page.actionBtn} onClick={() => setEditing(c)}>Editar</button>
                 </td>
@@ -78,7 +81,25 @@ function CustomerForm({ customer, onClose, onSave, saving }: {
   saving: boolean
 }) {
   const [name, setName] = useState(customer?.name ?? '')
-  const [phone, setPhone] = useState(customer?.phone ?? '')
+  const [phoneDisplay, setPhoneDisplay] = useState(
+    customer?.phone ? maskPhone(customer.phone) : '(11) '
+  )
+  const [location, setLocation] = useState(customer?.location ?? '')
+  const [notes, setNotes] = useState('')
+
+  function handlePhoneChange(val: string) {
+    setPhoneDisplay(maskPhone(val))
+  }
+
+  function handleSave() {
+    const rawPhone = cleanPhone(phoneDisplay)
+    onSave({
+      name,
+      phone: rawPhone.length >= 10 ? rawPhone : null,
+      location: location || null,
+      notes: notes || null,
+    })
+  }
 
   return (
     <Modal title={customer ? 'Editar cliente' : 'Novo cliente'} onClose={onClose}>
@@ -86,9 +107,21 @@ function CustomerForm({ customer, onClose, onSave, saving }: {
         <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
       </FormField>
       <FormField label="Telefone">
-        <input style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 99999-9999" />
+        <input
+          style={inputStyle}
+          value={phoneDisplay}
+          onChange={(e) => handlePhoneChange(e.target.value)}
+          placeholder="(11) 94040-4040"
+          inputMode="tel"
+        />
       </FormField>
-      <button style={btnPrimary} onClick={() => onSave({ name, phone: phone || null })} disabled={!name || saving}>
+      <FormField label="Local / Prédio (opcional)">
+        <input style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex: Ed. Villa Lobos" />
+      </FormField>
+      <FormField label="Observações">
+        <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
+      </FormField>
+      <button style={btnPrimary} onClick={handleSave} disabled={!name || saving}>
         {saving ? 'Salvando...' : 'Salvar'}
       </button>
     </Modal>

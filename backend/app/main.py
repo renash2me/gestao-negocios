@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import engine, Base, SessionLocal
@@ -11,6 +12,27 @@ from app.api.v1.router import api_router
 
 settings = get_settings()
 logger = logging.getLogger("gestao")
+
+
+def run_migrations():
+    """Adiciona colunas novas sem perder dados existentes."""
+    migrations = [
+        "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS location VARCHAR(200)",
+        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_price NUMERIC(10,2)",
+        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_weight NUMERIC(10,4)",
+    ]
+    db = SessionLocal()
+    try:
+        for sql in migrations:
+            try:
+                db.execute(text(sql))
+            except Exception as e:
+                logger.warning(f"Migracao ignorada: {e}")
+        db.commit()
+        logger.info("Migracoes executadas com sucesso")
+    finally:
+        db.close()
 
 
 def seed_admin():
@@ -49,6 +71,7 @@ def seed_admin():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    run_migrations()
     seed_admin()
     yield
 

@@ -19,6 +19,7 @@ export interface Customer {
   id: number
   name: string
   phone: string | null
+  location: string | null
 }
 
 export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito'

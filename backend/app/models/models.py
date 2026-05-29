@@ -65,6 +65,7 @@ class Customer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(150))
     phone: Mapped[str | None] = mapped_column(String(30))
+    location: Mapped[str | None] = mapped_column(String(200))  # ex: "Ed. Villa Lobos"
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -98,6 +99,7 @@ class Ingredient(Base):
     avg_price_per_unit: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"))
     last_price_per_unit: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"))
     last_supplier: Mapped[str | None] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -115,6 +117,8 @@ class IngredientPriceHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id"))
     price_per_unit: Mapped[Decimal] = mapped_column(Numeric(10, 4))
+    package_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))   # preço pago na embalagem
+    package_weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))  # peso da embalagem
     supplier: Mapped[str | None] = mapped_column(String(200))
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

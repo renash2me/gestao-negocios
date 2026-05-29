@@ -21,7 +21,8 @@ class IngredientIn(BaseModel):
 
 
 class IngredientPriceIn(BaseModel):
-    price_per_unit: Decimal
+    package_price: Decimal       # preco pago na embalagem inteira
+    package_weight: Decimal      # peso da embalagem na unidade do insumo
     supplier: str | None = None
 
 
@@ -32,18 +33,41 @@ class IngredientOut(BaseModel):
     avg_price_per_unit: Decimal
     last_price_per_unit: Decimal
     last_supplier: str | None
+    is_active: bool
     model_config = {"from_attributes": True}
 
 
 @router.get("/ingredients", response_model=list[IngredientOut])
-def list_ingredients(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(Ingredient).order_by(Ingredient.name).all()
+def list_ingredients(
+    active_only: bool = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    q = db.query(Ingredient).order_by(Ingredient.name)
+    if active_only:
+        q = q.filter(Ingredient.is_active == True)
+    return q.all()
 
 
 @router.post("/ingredients", response_model=IngredientOut, status_code=status.HTTP_201_CREATED)
 def create_ingredient(data: IngredientIn, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     ing = Ingredient(**data.model_dump())
     db.add(ing)
+    db.commit()
+    db.refresh(ing)
+    return ing
+
+
+@router.patch("/ingredients/{ingredient_id}/toggle", response_model=IngredientOut)
+def toggle_ingredient(
+    ingredient_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    ing = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+    if not ing:
+        raise HTTPException(status_code=404, detail="Insumo nao encontrado")
+    ing.is_active = not ing.is_active
     db.commit()
     db.refresh(ing)
     return ing
@@ -56,26 +80,33 @@ def register_price(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    """Registra novo preço e recalcula média histórica."""
+    """Registra preco a partir do valor da embalagem e peso. Calcula preco por unidade."""
     ing = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
     if not ing:
-        raise HTTPException(status_code=404, detail="Insumo não encontrado")
+        raise HTTPException(status_code=404, detail="Insumo nao encontrado")
+
+    if data.package_weight <= 0:
+        raise HTTPException(status_code=400, detail="Peso deve ser maior que zero")
+
+    price_per_unit = (data.package_price / data.package_weight).quantize(Decimal("0.0001"))
 
     db.add(IngredientPriceHistory(
         ingredient_id=ingredient_id,
-        price_per_unit=data.price_per_unit,
+        price_per_unit=price_per_unit,
+        package_price=data.package_price,
+        package_weight=data.package_weight,
         supplier=data.supplier,
     ))
     db.flush()
 
-    # Recalcula média
+    # Recalcula media
     history = db.query(IngredientPriceHistory).filter(
         IngredientPriceHistory.ingredient_id == ingredient_id
     ).all()
     avg = sum(h.price_per_unit for h in history) / len(history)
 
     ing.avg_price_per_unit = avg.quantize(Decimal("0.0001"))
-    ing.last_price_per_unit = data.price_per_unit
+    ing.last_price_per_unit = price_per_unit
     ing.last_supplier = data.supplier
 
     db.commit()

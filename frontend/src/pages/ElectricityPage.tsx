@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { page } from '../components/adminStyles'
 
@@ -26,10 +27,6 @@ export function ElectricityPage() {
     mutationFn: (data: Record<string, unknown>) => api.post('/costs/electricity', data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['electricity'] }); setAdding(false) },
   })
-
-  function formatMoney(v: number) {
-    return `R$ ${Number(v).toFixed(2).replace('.', ',')}`
-  }
 
   function formatMonth(m: string) {
     const [year, month] = m.split('-')
@@ -64,8 +61,8 @@ export function ElectricityPage() {
               <tr key={b.id}>
                 <td style={page.td}>{formatMonth(b.reference_month)}</td>
                 <td style={page.td}>{Number(b.kwh_consumed).toFixed(0)}</td>
-                <td style={page.td}>{formatMoney(b.kwh_rate)}</td>
-                <td style={{ ...page.td, fontWeight: 600 }}>{formatMoney(b.total_cost)}</td>
+                <td style={page.td}>{formatBRL(b.kwh_rate)}</td>
+                <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(b.total_cost)}</td>
                 <td style={page.td}>{b.notes || '—'}</td>
               </tr>
             ))}

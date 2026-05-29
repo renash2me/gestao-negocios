@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatBRL } from '../lib/format'
 import type { CartItem, CardMachine, Customer, PaymentMethod } from '../lib/types'
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -57,7 +58,7 @@ export function CheckoutModal({ cart, total, onConfirm, onClose }: Props) {
         <div style={styles.totalBox}>
           <span style={styles.totalLabel}>Total da venda</span>
           <span style={styles.totalValue}>
-            R$ {total.toFixed(2).replace('.', ',')}
+            {formatBRL(total)}
           </span>
           <span style={styles.itemCount}>
             {cart.reduce((s, i) => s + i.quantity, 0)} itens

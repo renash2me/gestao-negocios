@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { page } from '../components/adminStyles'
 
@@ -46,33 +47,34 @@ export function ProductsPage() {
     queryFn: () => api.get('/products/?active_only=false').then((r) => r.data),
   })
 
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ['products-admin'] })
+    qc.invalidateQueries({ queryKey: ['products'] })
+  }
+
   const create = useMutation({
     mutationFn: (data: Record<string, unknown>) => api.post('/products/', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['products-admin'] }); closeForm() },
+    onSuccess: () => { invalidateAll(); closeForm() },
   })
 
   const update = useMutation({
     mutationFn: ({ id, ...data }: Record<string, unknown>) => api.put(`/products/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['products-admin'] }); closeForm() },
+    onSuccess: () => { invalidateAll(); closeForm() },
   })
 
-  const deactivate = useMutation({
-    mutationFn: (id: number) => api.delete(`/products/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products-admin'] }),
+  const toggle = useMutation({
+    mutationFn: (id: number) => api.patch(`/products/${id}/toggle`),
+    onSuccess: () => invalidateAll(),
   })
 
   function closeForm() { setFormOpen(false); setEditing(null) }
   function openEdit(p: Product) { setEditing(p); setFormOpen(true) }
   function openNew() { setEditing(null); setFormOpen(true) }
 
-  function formatMoney(v: number) {
-    return `R$ ${Number(v).toFixed(2).replace('.', ',')}`
-  }
-
   function margin(p: Product) {
     if (p.sale_price === 0) return '—'
     const m = ((p.sale_price - p.ingredient_cost) / p.sale_price * 100)
-    return `${m.toFixed(1)}%`
+    return `${m.toFixed(1).replace('.', ',')}%`
   }
 
   return (
@@ -94,7 +96,7 @@ export function ProductsPage() {
               <th style={page.th}>Preço venda</th>
               <th style={page.th}>Custo insumos</th>
               <th style={page.th}>Margem</th>
-              <th style={page.th}>Tempo preparo</th>
+              <th style={page.th}>Preparo</th>
               <th style={page.th}>Status</th>
               <th style={page.th}>Ações</th>
             </tr>
@@ -106,20 +108,20 @@ export function ProductsPage() {
                   <div style={{ fontWeight: 600 }}>{p.name}</div>
                   {p.description && <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginTop: '2px' }}>{p.description}</div>}
                 </td>
-                <td style={page.td}>{formatMoney(p.sale_price)}</td>
-                <td style={page.td}>{formatMoney(p.ingredient_cost)}</td>
+                <td style={page.td}>{formatBRL(p.sale_price)}</td>
+                <td style={page.td}>{formatBRL(p.ingredient_cost)}</td>
                 <td style={page.td}>{margin(p)}</td>
                 <td style={page.td}>{p.prep_time_minutes} min</td>
                 <td style={page.td}>
-                  <span style={{ ...page.badge, ...(p.is_active ? page.badgeActive : page.badgeInactive) }}>
+                  <button
+                    style={{ ...page.badge, ...(p.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none' }}
+                    onClick={() => toggle.mutate(p.id)}
+                  >
                     {p.is_active ? 'Ativo' : 'Inativo'}
-                  </span>
+                  </button>
                 </td>
                 <td style={page.td}>
                   <button style={page.actionBtn} onClick={() => openEdit(p)}>Editar</button>
-                  {p.is_active && (
-                    <button style={{ ...page.actionBtn, color: 'var(--danger)' }} onClick={() => deactivate.mutate(p.id)}>Desativar</button>
-                  )}
                 </td>
               </tr>
             ))}
