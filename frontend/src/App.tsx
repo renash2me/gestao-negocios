@@ -12,6 +12,7 @@ import { ElectricityPage } from './pages/ElectricityPage'
 import { UsersPage } from './pages/UsersPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { RecipesPage } from './pages/RecipesPage'
+import { FailedSalesPage } from './pages/FailedSalesPage'
 import type { ReactNode } from 'react'
 
 const queryClient = new QueryClient({
@@ -69,6 +70,7 @@ export function App() {
               <Route path="customers" element={<CustomersPage />} />
               <Route path="electricity" element={<ElectricityPage />} />
               <Route path="users" element={<UsersPage />} />
+              <Route path="failed-sales" element={<FailedSalesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/pdv" replace />} />
           </Routes>

@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/admin/customers',   label: 'Clientes' },
   { to: '/admin/electricity', label: 'Conta de Luz' },
   { to: '/admin/users',       label: 'Usuários' },
+  { to: '/admin/failed-sales', label: 'Vendas com falha' },
   { to: '/pdv',               label: 'Voltar ao PDV' },
 ]
 

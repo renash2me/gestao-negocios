@@ -1,7 +1,7 @@
 import { useSaleSync } from '../hooks/useSaleSync'
 
 export function SyncBadge() {
-  const { isOnline, pendingCount, syncing } = useSaleSync()
+  const { isOnline, pendingCount, failedCount, syncing } = useSaleSync()
 
   let label = 'Online'
   let color = 'var(--success)'
@@ -21,9 +21,16 @@ export function SyncBadge() {
   }
 
   return (
-    <div style={{ ...styles.badge, color, background: bg }}>
-      <span style={{ ...styles.dot, background: color }} />
-      {label}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+      <div style={{ ...styles.badge, color, background: bg }}>
+        <span style={{ ...styles.dot, background: color }} />
+        {label}
+      </div>
+      {failedCount > 0 && (
+        <div style={{ ...styles.badge, color: 'var(--danger)', background: '#fbe9e7' }}>
+          {failedCount} com erro
+        </div>
+      )}
     </div>
   )
 }
@@ -33,9 +40,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 600,
-    padding: '5px 12px',
+    padding: '4px 10px',
     borderRadius: '999px',
   },
   dot: {

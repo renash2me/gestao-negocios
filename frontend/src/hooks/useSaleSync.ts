@@ -8,8 +8,8 @@ export function useSaleSync() {
   const isOnline = useOnlineStatus()
   const [syncing, setSyncing] = useState(false)
 
-  // Conta reativa de vendas pendentes
   const pendingCount = useLiveQuery(() => db.pendingSales.count(), [], 0)
+  const failedCount = useLiveQuery(() => db.failedSales.count(), [], 0)
 
   const sync = useCallback(async () => {
     if (syncing || !isOnline) return
@@ -21,7 +21,6 @@ export function useSaleSync() {
     }
   }, [syncing, isOnline])
 
-  // Sincroniza automaticamente quando volta a ficar online
   useEffect(() => {
     if (isOnline && pendingCount && pendingCount > 0) {
       sync()
@@ -29,5 +28,11 @@ export function useSaleSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline, pendingCount])
 
-  return { pendingCount: pendingCount ?? 0, syncing, sync, isOnline }
+  return {
+    pendingCount: pendingCount ?? 0,
+    failedCount: failedCount ?? 0,
+    syncing,
+    sync,
+    isOnline,
+  }
 }
