@@ -10,10 +10,6 @@ services:
       BUSINESS_LOGO_URL: ${BUSINESS_LOGO_URL:-}
       DEFAULT_CARD_FEE_PERCENT: ${DEFAULT_CARD_FEE_PERCENT:-2.0}
       DEFAULT_KWH_RATE: ${DEFAULT_KWH_RATE:-0.75}
-      # Usados só pelo comando de criacao do admin (seed_admin)
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      ADMIN_NAME: ${ADMIN_NAME:-Administrador}
     depends_on:
       db:
         condition: service_healthy
@@ -22,14 +18,10 @@ services:
       - n8n_default
     labels:
       - traefik.enable=true
-      - traefik.docker.network=n8n_default
-      # API - prioridade maior, captura tudo em /api
       - traefik.http.routers.gestao-flores-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)
-      - traefik.http.routers.gestao-flores-api.priority=100
       - traefik.http.routers.gestao-flores-api.entrypoints=web,websecure
       - traefik.http.routers.gestao-flores-api.tls=true
       - traefik.http.routers.gestao-flores-api.tls.certresolver=mydnschallenge
-      - traefik.http.routers.gestao-flores-api.service=gestao-flores-api
       - traefik.http.services.gestao-flores-api.loadbalancer.server.port=8000
 
   frontend:
@@ -42,14 +34,10 @@ services:
       - n8n_default
     labels:
       - traefik.enable=true
-      - traefik.docker.network=n8n_default
-      # Frontend - prioridade menor, pega todo o resto
       - traefik.http.routers.gestao-flores.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.gestao-flores.priority=1
       - traefik.http.routers.gestao-flores.entrypoints=web,websecure
       - traefik.http.routers.gestao-flores.tls=true
       - traefik.http.routers.gestao-flores.tls.certresolver=mydnschallenge
-      - traefik.http.routers.gestao-flores.service=gestao-flores
       - traefik.http.services.gestao-flores.loadbalancer.server.port=80
 
   db:
@@ -68,8 +56,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # Postgres NAO exposto pro host - acesso so via rede interna.
-    # Backup via n8n: docker exec gestao-flores-doces-db-1 pg_dump -U usuario banco
+    # Postgres NÃO exposto pro host — acesso só via rede interna
+    # O workflow n8n de backup acessa via: docker exec gestao-flores-doces-db-1 pg_dump ...
 
 networks:
   internal:

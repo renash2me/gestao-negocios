@@ -171,18 +171,14 @@ def update_product(
     return build_product_out(product)
 
 
-@router.patch("/{product_id}/toggle", response_model=ProductOut)
-def toggle_product(
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_product(
     product_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    product = db.query(Product).options(
-        selectinload(Product.recipe_items).selectinload(RecipeItem.ingredient)
-    ).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado")
-    product.is_active = not product.is_active
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    product.is_active = False
     db.commit()
-    db.refresh(product)
-    return build_product_out(product)
