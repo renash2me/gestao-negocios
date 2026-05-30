@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
+import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
 
 interface RecipeItem {
@@ -232,13 +233,12 @@ function RecipeForm({ recipe, onClose, onSave, saving }: {
                 <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
               ))}
             </select>
-            <input
+            <NumericInput
               style={{ ...inputStyle, flex: 1 }}
-              type="number"
-              step="0.01"
               placeholder="Qtd"
               value={item.quantity}
-              onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+              onChange={(v) => updateItem(idx, 'quantity', v)}
+              decimals={2}
             />
             <button
               style={{ fontSize: '18px', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}

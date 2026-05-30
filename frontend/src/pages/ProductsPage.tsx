@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
+import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
 
 interface Product {
@@ -147,8 +148,8 @@ function ProductForm({ product, onClose, onSave, saving }: {
 }) {
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
-  const [priceDisplay, setPriceDisplay] = useState(
-    product ? product.sale_price.toFixed(2).replace('.', ',') : ''
+  const [price, setPrice] = useState(
+    product ? String(product.sale_price) : ''
   )
   const [recipeId, setRecipeId] = useState<number | null>(product?.recipe_id ?? null)
   const [units, setUnits] = useState(String(product?.units_per_batch ?? '1'))
@@ -160,16 +161,9 @@ function ProductForm({ product, onClose, onSave, saving }: {
 
   const selectedRecipe = recipes.find((r) => r.id === recipeId)
 
-  // Calcula custo e margem em tempo real
-  const priceNum = Number(priceDisplay.replace(/\./g, '').replace(',', '.')) || 0
+  const priceNum = Number(price) || 0
   const unitCost = selectedRecipe ? selectedRecipe.cost_per_unit * Number(units) : 0
   const margin = priceNum > 0 ? ((priceNum - unitCost) / priceNum * 100) : 0
-
-  function handlePriceChange(val: string) {
-    // Permite digitar vírgula como separador decimal
-    const cleaned = val.replace(/[^0-9,]/g, '')
-    setPriceDisplay(cleaned)
-  }
 
   function handleSubmit() {
     onSave({
@@ -190,13 +184,7 @@ function ProductForm({ product, onClose, onSave, saving }: {
         <input style={inputStyle} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" />
       </FormField>
       <FormField label="Preço de venda (R$)">
-        <input
-          style={inputStyle}
-          value={priceDisplay}
-          onChange={(e) => handlePriceChange(e.target.value)}
-          placeholder="4,50"
-          inputMode="decimal"
-        />
+        <NumericInput value={price} onChange={setPrice} placeholder="4,50" decimals={2} />
       </FormField>
       <FormField label="Receita / Batelada">
         <select

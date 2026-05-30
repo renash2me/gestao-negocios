@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
+import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
 import type { CardMachine } from '../lib/types'
 
@@ -84,10 +85,10 @@ function MachineForm({ machine, onClose, onSave, saving }: {
         <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Cielo D150" />
       </FormField>
       <FormField label="Taxa débito (%)">
-        <input style={inputStyle} type="number" step="0.1" value={debit} onChange={(e) => setDebit(e.target.value)} />
+        <NumericInput value={debit} onChange={setDebit} placeholder="1,5" decimals={2} />
       </FormField>
       <FormField label="Taxa crédito (%)">
-        <input style={inputStyle} type="number" step="0.1" value={credit} onChange={(e) => setCredit(e.target.value)} />
+        <NumericInput value={credit} onChange={setCredit} placeholder="3,0" decimals={2} />
       </FormField>
       <button style={btnPrimary} onClick={handleSubmit} disabled={!name || saving}>
         {saving ? 'Salvando...' : 'Salvar'}

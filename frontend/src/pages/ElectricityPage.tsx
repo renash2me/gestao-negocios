@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
+import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
 
 interface ElectricityBill {
@@ -98,10 +99,10 @@ function ElectricityForm({ onSave, saving }: {
       </FormField>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <FormField label="Consumo (kWh)">
-          <input style={inputStyle} type="number" step="0.01" value={kwh} onChange={(e) => setKwh(e.target.value)} placeholder="Ex: 320" />
+          <NumericInput value={kwh} onChange={setKwh} placeholder="320" decimals={2} />
         </FormField>
         <FormField label="Tarifa (R$/kWh)">
-          <input style={inputStyle} type="number" step="0.0001" value={rate} onChange={(e) => setRate(e.target.value)} />
+          <NumericInput value={rate} onChange={setRate} placeholder="0,75" decimals={4} />
         </FormField>
       </div>
       <FormField label="Observações">

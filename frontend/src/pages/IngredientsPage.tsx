@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatDecimal } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
+import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
 
 interface Ingredient {
@@ -183,10 +184,10 @@ function PriceForm({ unit, onSave, saving }: {
   return (
     <>
       <FormField label="Preço pago na embalagem (R$)">
-        <input style={inputStyle} type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Ex: 15,90" />
+        <NumericInput value={price} onChange={setPrice} placeholder="15,90" decimals={2} />
       </FormField>
       <FormField label={`Peso/quantidade da embalagem (${unit})`}>
-        <input style={inputStyle} type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ex: 500" />
+        <NumericInput value={weight} onChange={setWeight} placeholder="500" decimals={2} />
       </FormField>
 
       {pricePerUnit !== null && (
