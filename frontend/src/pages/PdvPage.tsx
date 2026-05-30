@@ -17,10 +17,16 @@ export function PdvPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [checkout, setCheckout] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [pdvLocation, setPdvLocation] = useState<string | null>(null)
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => api.get('/products/').then((r) => r.data),
+  })
+
+  const { data: locations = [] } = useQuery<string[]>({
+    queryKey: ['locations'],
+    queryFn: () => api.get('/customers/locations').then((r) => r.data),
   })
 
   const total = cart.reduce((s, i) => s + i.product.sale_price * i.quantity, 0)
@@ -89,6 +95,22 @@ export function PdvPage() {
         </div>
       </header>
 
+      {locations.length > 0 && (
+        <div style={styles.locationBar}>
+          <span style={styles.locationLabel}>Local:</span>
+          <select
+            style={styles.locationSelect}
+            value={pdvLocation ?? ''}
+            onChange={(e) => setPdvLocation(e.target.value || null)}
+          >
+            <option value="">Todos os locais</option>
+            {locations.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {isLoading ? (
         <div style={styles.loading}>Carregando produtos...</div>
       ) : (
@@ -139,6 +161,7 @@ export function PdvPage() {
         <CheckoutModal
           cart={cart}
           total={total}
+          pdvLocation={pdvLocation}
           onConfirm={handleConfirm}
           onClose={() => setCheckout(false)}
         />
@@ -178,6 +201,24 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '5px 12px',
     background: 'rgba(125,60,82,0.1)',
     borderRadius: '6px',
+  },
+  locationBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 18px',
+    background: 'var(--cream-dark)',
+    fontSize: '13px',
+  },
+  locationLabel: { fontWeight: 600, color: 'var(--ink-soft)' },
+  locationSelect: {
+    flex: 1,
+    padding: '8px 12px',
+    fontSize: '14px',
+    border: '1.5px solid var(--cream-dark)',
+    borderRadius: '8px',
+    background: 'var(--white)',
+    color: 'var(--ink)',
   },
   loading: { textAlign: 'center', padding: '60px', color: 'var(--ink-soft)' },
   grid: {

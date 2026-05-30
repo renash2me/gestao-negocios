@@ -15,10 +15,20 @@ interface Ingredient {
   is_active: boolean
 }
 
+interface PriceEntry {
+  id: number
+  price_per_unit: number
+  package_price: number | null
+  package_weight: number | null
+  supplier: string | null
+  recorded_at: string
+}
+
 export function IngredientsPage() {
   const qc = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [pricingId, setPricingId] = useState<Ingredient | null>(null)
+  const [historyId, setHistoryId] = useState<Ingredient | null>(null)
 
   const { data: ingredients = [], isLoading } = useQuery<Ingredient[]>({
     queryKey: ['ingredients'],
@@ -39,6 +49,12 @@ export function IngredientsPage() {
   const toggle = useMutation({
     mutationFn: (id: number) => api.patch(`/costs/ingredients/${id}/toggle`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredients'] }),
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: number) => api.delete(`/costs/ingredients/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredients'] }),
+    onError: (err: any) => alert(err.response?.data?.detail || 'Erro ao excluir'),
   })
 
   return (
@@ -82,7 +98,14 @@ export function IngredientsPage() {
                   </button>
                 </td>
                 <td style={page.td}>
-                  <button style={page.actionBtn} onClick={() => setPricingId(i)}>Registrar preço</button>
+                  <button style={page.actionBtn} onClick={() => setPricingId(i)}>+ Preço</button>
+                  <button style={page.actionBtn} onClick={() => setHistoryId(i)}>Histórico</button>
+                  <button
+                    style={{ ...page.actionBtn, color: 'var(--danger)' }}
+                    onClick={() => { if (confirm(`Excluir "${i.name}"?`)) remove.mutate(i.id) }}
+                  >
+                    Excluir
+                  </button>
                 </td>
               </tr>
             ))}
@@ -104,6 +127,13 @@ export function IngredientsPage() {
             saving={registerPrice.isPending}
           />
         </Modal>
+      )}
+
+      {historyId && (
+        <PriceHistoryModal
+          ingredient={historyId}
+          onClose={() => setHistoryId(null)}
+        />
       )}
     </div>
   )
@@ -156,7 +186,7 @@ function PriceForm({ unit, onSave, saving }: {
         <input style={inputStyle} type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Ex: 15,90" />
       </FormField>
       <FormField label={`Peso/quantidade da embalagem (${unit})`}>
-        <input style={inputStyle} type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder={`Ex: 500`} />
+        <input style={inputStyle} type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ex: 500" />
       </FormField>
 
       {pricePerUnit !== null && (
@@ -176,5 +206,65 @@ function PriceForm({ unit, onSave, saving }: {
         {saving ? 'Registrando...' : 'Registrar preço'}
       </button>
     </>
+  )
+}
+
+function PriceHistoryModal({ ingredient, onClose }: { ingredient: Ingredient; onClose: () => void }) {
+  const qc = useQueryClient()
+
+  const { data: history = [], isLoading } = useQuery<PriceEntry[]>({
+    queryKey: ['price-history', ingredient.id],
+    queryFn: () => api.get(`/costs/ingredients/${ingredient.id}/prices`).then((r) => r.data),
+  })
+
+  const remove = useMutation({
+    mutationFn: (priceId: number) => api.delete(`/costs/ingredients/${ingredient.id}/price/${priceId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['price-history', ingredient.id] })
+      qc.invalidateQueries({ queryKey: ['ingredients'] })
+    },
+  })
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
+  return (
+    <Modal title={`Histórico — ${ingredient.name}`} onClose={onClose}>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--ink-soft)' }}>Carregando...</div>
+      ) : history.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--ink-soft)' }}>Nenhum preço registrado.</div>
+      ) : (
+        <div>
+          {history.map((h) => (
+            <div key={h.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 0', borderBottom: '1px solid var(--cream)',
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 500 }}>
+                  R$ {formatDecimal(h.price_per_unit)} / {ingredient.unit}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
+                  {h.package_price && h.package_weight
+                    ? `Embalagem: R$ ${Number(h.package_price).toFixed(2).replace('.', ',')} / ${Number(h.package_weight).toFixed(0)} ${ingredient.unit}`
+                    : ''
+                  }
+                  {h.supplier ? ` — ${h.supplier}` : ''}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '2px' }}>{formatDate(h.recorded_at)}</div>
+              </div>
+              <button
+                style={{ fontSize: '13px', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}
+                onClick={() => { if (confirm('Excluir este registro?')) remove.mutate(h.id) }}
+              >
+                Excluir
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   )
 }

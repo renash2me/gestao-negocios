@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models.models import Product, RecipeItem, Ingredient
+from app.models.models import Product, RecipeItem, Ingredient, SaleItem
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.models.models import User
 
@@ -171,14 +171,35 @@ def update_product(
     return build_product_out(product)
 
 
+@router.patch("/{product_id}/toggle", response_model=ProductOut)
+def toggle_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    product = db.query(Product).options(
+        selectinload(Product.recipe_items).selectinload(RecipeItem.ingredient)
+    ).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto nao encontrado")
+    product.is_active = not product.is_active
+    db.commit()
+    db.refresh(product)
+    return build_product_out(product)
+
+
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def deactivate_product(
+def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
-    product.is_active = False
+        raise HTTPException(status_code=404, detail="Produto nao encontrado")
+    has_sales = db.query(SaleItem).filter(SaleItem.product_id == product_id).first()
+    if has_sales:
+        raise HTTPException(status_code=400, detail="Produto possui vendas registradas. Desative-o em vez de excluir.")
+    db.query(RecipeItem).filter(RecipeItem.product_id == product_id).delete()
+    db.delete(product)
     db.commit()

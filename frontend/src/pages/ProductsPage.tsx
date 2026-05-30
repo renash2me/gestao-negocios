@@ -67,6 +67,14 @@ export function ProductsPage() {
     onSuccess: () => invalidateAll(),
   })
 
+  const remove = useMutation({
+    mutationFn: (id: number) => api.delete(`/products/${id}`),
+    onSuccess: () => invalidateAll(),
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || 'Erro ao excluir produto')
+    },
+  })
+
   function closeForm() { setFormOpen(false); setEditing(null) }
   function openEdit(p: Product) { setEditing(p); setFormOpen(true) }
   function openNew() { setEditing(null); setFormOpen(true) }
@@ -122,6 +130,12 @@ export function ProductsPage() {
                 </td>
                 <td style={page.td}>
                   <button style={page.actionBtn} onClick={() => openEdit(p)}>Editar</button>
+                  <button
+                    style={{ ...page.actionBtn, color: 'var(--danger)' }}
+                    onClick={() => { if (confirm(`Excluir "${p.name}"?`)) remove.mutate(p.id) }}
+                  >
+                    Excluir
+                  </button>
                 </td>
               </tr>
             ))}
