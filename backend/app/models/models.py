@@ -142,39 +142,61 @@ class ElectricityBill(Base):
 
 
 # ---------------------------------------------------------------------------
-# Produtos e Ficha Técnica
+# Receitas (bateladas)
+# ---------------------------------------------------------------------------
+
+class Recipe(Base):
+    """Uma receita/batelada — ex: 'Massa de Brigadeiro'. Rende X unidades."""
+    __tablename__ = "recipes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(150))
+    description: Mapped[str | None] = mapped_column(Text)
+    prep_time_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    yield_units: Mapped[int] = mapped_column(Integer, default=1)  # rende quantas unidades
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list["RecipeItem"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan"
+    )
+    products: Mapped[list["Product"]] = relationship(back_populates="recipe")
+
+
+class RecipeItem(Base):
+    """Ficha tecnica: quantidade de cada insumo por receita/batelada."""
+    __tablename__ = "recipe_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"))
+    ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id"))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 4))  # na unidade do insumo
+
+    __table_args__ = (UniqueConstraint("recipe_id", "ingredient_id"),)
+
+    recipe: Mapped["Recipe"] = relationship(back_populates="items")
+    ingredient: Mapped["Ingredient"] = relationship(back_populates="recipe_items")
+
+
+# ---------------------------------------------------------------------------
+# Produtos (o que é vendido)
 # ---------------------------------------------------------------------------
 
 class Product(Base):
+    """Produto vendido — ex: 'Brigadeiro Unitário' (1 un da receita) ou 'Kit 4' (4 un)."""
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(150))
     description: Mapped[str | None] = mapped_column(Text)
     sale_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    prep_time_minutes: Mapped[int] = mapped_column(Integer, default=0)  # para rateio de luz
+    recipe_id: Mapped[int | None] = mapped_column(ForeignKey("recipes.id"), nullable=True)
+    units_per_batch: Mapped[int] = mapped_column(Integer, default=1)  # quantas un da batelada
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    recipe_items: Mapped[list["RecipeItem"]] = relationship(
-        back_populates="product", cascade="all, delete-orphan"
-    )
+    recipe: Mapped["Recipe | None"] = relationship(back_populates="products")
     sale_items: Mapped[list["SaleItem"]] = relationship(back_populates="product")
-
-
-class RecipeItem(Base):
-    """Ficha técnica: quantidade de cada insumo por produto."""
-    __tablename__ = "recipe_items"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
-    ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id"))
-    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 4))  # na unidade do insumo
-
-    __table_args__ = (UniqueConstraint("product_id", "ingredient_id"),)
-
-    product: Mapped["Product"] = relationship(back_populates="recipe_items")
-    ingredient: Mapped["Ingredient"] = relationship(back_populates="recipe_items")
 
 
 # ---------------------------------------------------------------------------

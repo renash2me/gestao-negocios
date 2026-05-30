@@ -4,6 +4,7 @@ import { SyncBadge } from './SyncBadge'
 
 const NAV_ITEMS = [
   { to: '/admin/dashboard',   label: '📊 Painel de Gestão' },
+  { to: '/admin/recipes',     label: 'Receitas' },
   { to: '/admin/products',    label: 'Produtos' },
   { to: '/admin/ingredients', label: 'Insumos' },
   { to: '/admin/machines',    label: 'Maquininhas' },

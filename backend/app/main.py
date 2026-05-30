@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 
 from app.core.config import get_settings
 from app.db.session import engine, Base, SessionLocal
@@ -15,32 +15,69 @@ logger = logging.getLogger("gestao")
 
 
 def run_migrations():
-    """Adiciona colunas novas sem perder dados existentes."""
-    migrations = [
-        "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
-        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS location VARCHAR(200)",
-        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_price NUMERIC(10,2)",
-        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_weight NUMERIC(10,4)",
-    ]
+    """Migracoes incrementais — idempotentes."""
     db = SessionLocal()
+    inspector = inspect(engine)
     try:
-        for sql in migrations:
+        existing = inspector.get_table_names()
+
+        # Migracoes de colunas simples
+        simple = [
+            "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS location VARCHAR(200)",
+            "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_price NUMERIC(10,2)",
+            "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_weight NUMERIC(10,4)",
+        ]
+        for sql in simple:
             try:
                 db.execute(text(sql))
-            except Exception as e:
-                logger.warning(f"Migracao ignorada: {e}")
+            except Exception:
+                pass
+
+        # Migracao estrutural: Recipe separada de Product
+        if "recipes" not in existing:
+            logger.info("Migrando para modelo Recipe separado...")
+            # Cria tabela recipes
+            db.execute(text("""
+                CREATE TABLE recipes (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(150) NOT NULL,
+                    description TEXT,
+                    prep_time_minutes INTEGER DEFAULT 0,
+                    yield_units INTEGER DEFAULT 1,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            # Adiciona colunas no products
+            db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS recipe_id INTEGER REFERENCES recipes(id)"))
+            db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS units_per_batch INTEGER DEFAULT 1"))
+            # Recria recipe_items apontando para recipes
+            db.execute(text("DROP TABLE IF EXISTS recipe_items CASCADE"))
+            db.execute(text("""
+                CREATE TABLE recipe_items (
+                    id SERIAL PRIMARY KEY,
+                    recipe_id INTEGER NOT NULL REFERENCES recipes(id),
+                    ingredient_id INTEGER NOT NULL REFERENCES ingredients(id),
+                    quantity NUMERIC(10,4) NOT NULL,
+                    UNIQUE(recipe_id, ingredient_id)
+                )
+            """))
+            logger.info("Migracao Recipe concluida. Receitas antigas precisam ser recadastradas.")
+
         db.commit()
         logger.info("Migracoes executadas com sucesso")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erro na migracao: {e}")
     finally:
         db.close()
 
 
 def seed_admin():
-    """Cria o admin inicial se ADMIN_EMAIL estiver definido e o usuario nao existir."""
     email = os.getenv("ADMIN_EMAIL", "").strip()
     password = os.getenv("ADMIN_PASSWORD", "").strip()
     name = os.getenv("ADMIN_NAME", "Administrador")
-
     if not email or not password:
         return
 
@@ -51,16 +88,8 @@ def seed_admin():
     try:
         existing = db.query(User).filter(User.email == email).first()
         if existing:
-            logger.info(f"Admin {email} ja existe. Seed ignorado.")
             return
-
-        admin = User(
-            name=name,
-            email=email,
-            hashed_password=get_password_hash(password),
-            role=UserRole.admin,
-            is_active=True,
-        )
+        admin = User(name=name, email=email, hashed_password=get_password_hash(password), role=UserRole.admin, is_active=True)
         db.add(admin)
         db.commit()
         logger.info(f"Admin criado: {email}")
@@ -76,20 +105,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(
-    title=settings.BUSINESS_NAME,
-    version="1.0.0",
-    lifespan=lifespan,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+app = FastAPI(title=settings.BUSINESS_NAME, version="1.0.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(api_router, prefix="/api/v1")
 
 

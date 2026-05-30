@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models.models import Sale, SaleItem, Product, CardMachine, RecipeItem, Ingredient, PaymentMethod, SaleStatus
+from app.models.models import Sale, SaleItem, Product, CardMachine, Recipe, RecipeItem, PaymentMethod, SaleStatus
 from app.api.v1.endpoints.auth import get_current_user, require_admin
+from app.api.v1.endpoints.products import calc_product_cost
 from app.models.models import User
 
 router = APIRouter()
@@ -84,16 +85,6 @@ def get_card_fee(payment_method: PaymentMethod, machine: CardMachine | None) -> 
     if payment_method == PaymentMethod.debito and machine:
         return machine.debit_fee_percent / 100
     return Decimal("0")
-
-
-def calc_product_cost(product: Product, db: Session) -> Decimal:
-    total = Decimal("0")
-    items = db.query(RecipeItem).options(
-        selectinload(RecipeItem.ingredient)
-    ).filter(RecipeItem.product_id == product.id).all()
-    for item in items:
-        total += item.quantity * item.ingredient.avg_price_per_unit
-    return total.quantize(Decimal("0.0001"))
 
 
 def build_sale_out(sale: Sale) -> SaleOut:
