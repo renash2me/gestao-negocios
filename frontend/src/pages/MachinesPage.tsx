@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { formatDecimal } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
@@ -45,8 +46,8 @@ export function MachinesPage() {
             {machines.map((m) => (
               <tr key={m.id}>
                 <td style={page.td}>{m.name}</td>
-                <td style={page.td}>{m.debit_fee_percent}%</td>
-                <td style={page.td}>{m.credit_fee_percent}%</td>
+                <td style={page.td}>{formatDecimal(m.debit_fee_percent, 2)}%</td>
+                <td style={page.td}>{formatDecimal(m.credit_fee_percent, 2)}%</td>
               </tr>
             ))}
           </tbody>

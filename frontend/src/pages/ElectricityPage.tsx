@@ -61,7 +61,7 @@ export function ElectricityPage() {
             {bills.map((b) => (
               <tr key={b.id}>
                 <td style={page.td}>{formatMonth(b.reference_month)}</td>
-                <td style={page.td}>{Number(b.kwh_consumed).toFixed(0)}</td>
+                <td style={page.td}>{Number(b.kwh_consumed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
                 <td style={page.td}>{formatBRL(b.kwh_rate)}</td>
                 <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(b.total_cost)}</td>
                 <td style={page.td}>{b.notes || '—'}</td>
