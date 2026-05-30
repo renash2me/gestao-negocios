@@ -10,6 +10,7 @@ import { MachinesPage } from './pages/MachinesPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { ElectricityPage } from './pages/ElectricityPage'
 import { UsersPage } from './pages/UsersPage'
+import { DashboardPage } from './pages/DashboardPage'
 import type { ReactNode } from 'react'
 
 const queryClient = new QueryClient({
@@ -58,7 +59,8 @@ export function App() {
                 </RequireAdmin>
               }
             >
-              <Route index element={<Navigate to="products" replace />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="ingredients" element={<IngredientsPage />} />
               <Route path="machines" element={<MachinesPage />} />

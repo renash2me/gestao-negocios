@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, cast, Date
 from pydantic import BaseModel
 
 from app.db.session import get_db
@@ -186,6 +186,138 @@ def get_inactive_customers(
             phone=r.phone,
             days_inactive=(now - r.last_purchase.replace(tzinfo=timezone.utc)).days,
             total_spent=Decimal(str(r.total_spent)).quantize(Decimal("0.01")),
+        )
+        for r in rows
+    ]
+
+class DailySale(BaseModel):
+    date: str
+    revenue: Decimal
+    cost: Decimal
+    profit: Decimal
+    count: int
+
+
+class ProductProfit(BaseModel):
+    product_id: int
+    product_name: str
+    revenue: Decimal
+    cost: Decimal
+    profit: Decimal
+    margin: Decimal
+    quantity_sold: int
+
+
+class PaymentBreakdown(BaseModel):
+    method: str
+    total: Decimal
+    count: int
+
+
+@router.get("/sales-timeline", response_model=list[DailySale])
+def get_sales_timeline(
+    days: int = Query(30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            cast(Sale.sold_at, Date).label("date"),
+            func.sum(Sale.subtotal).label("revenue"),
+            func.sum(Sale.total_cost).label("cost"),
+            func.sum(Sale.gross_profit).label("profit"),
+            func.count(Sale.id).label("count"),
+        )
+        .filter(Sale.sold_at >= since, Sale.status == "confirmada")
+        .group_by(cast(Sale.sold_at, Date))
+        .order_by(cast(Sale.sold_at, Date))
+        .all()
+    )
+
+    return [
+        DailySale(
+            date=str(r.date),
+            revenue=Decimal(str(r.revenue)).quantize(Decimal("0.01")),
+            cost=Decimal(str(r.cost)).quantize(Decimal("0.01")),
+            profit=Decimal(str(r.profit)).quantize(Decimal("0.01")),
+            count=r.count,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/profit-by-product", response_model=list[ProductProfit])
+def get_profit_by_product(
+    days: int = Query(30, ge=1, le=365),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            SaleItem.product_id,
+            Product.name,
+            func.sum(SaleItem.line_total).label("revenue"),
+            func.sum(SaleItem.unit_cost * SaleItem.quantity).label("cost"),
+            func.sum(SaleItem.line_total - SaleItem.unit_cost * SaleItem.quantity).label("profit"),
+            func.sum(SaleItem.quantity).label("qty"),
+        )
+        .join(Product, SaleItem.product_id == Product.id)
+        .join(Sale, SaleItem.sale_id == Sale.id)
+        .filter(Sale.sold_at >= since, Sale.status == "confirmada")
+        .group_by(SaleItem.product_id, Product.name)
+        .order_by(desc("profit"))
+        .limit(limit)
+        .all()
+    )
+
+    result = []
+    for r in rows:
+        rev = Decimal(str(r.revenue))
+        cost = Decimal(str(r.cost))
+        profit = Decimal(str(r.profit))
+        margin = (profit / rev * 100) if rev else Decimal("0")
+        result.append(ProductProfit(
+            product_id=r.product_id,
+            product_name=r.name,
+            revenue=rev.quantize(Decimal("0.01")),
+            cost=cost.quantize(Decimal("0.01")),
+            profit=profit.quantize(Decimal("0.01")),
+            margin=margin.quantize(Decimal("0.01")),
+            quantity_sold=r.qty,
+        ))
+    return result
+
+
+@router.get("/payment-breakdown", response_model=list[PaymentBreakdown])
+def get_payment_breakdown(
+    days: int = Query(30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            Sale.payment_method,
+            func.sum(Sale.subtotal).label("total"),
+            func.count(Sale.id).label("count"),
+        )
+        .filter(Sale.sold_at >= since, Sale.status == "confirmada")
+        .group_by(Sale.payment_method)
+        .order_by(desc("total"))
+        .all()
+    )
+
+    return [
+        PaymentBreakdown(
+            method=r.payment_method,
+            total=Decimal(str(r.total)).quantize(Decimal("0.01")),
+            count=r.count,
         )
         for r in rows
     ]
