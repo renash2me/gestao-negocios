@@ -1,10 +1,10 @@
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models.models import Ingredient, IngredientPriceHistory, CardMachine, ElectricityBill, RecipeItem
+from app.models.models import Ingredient, IngredientPriceHistory, CardMachine, ElectricityBill, RecipeItem, Sale
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.models.models import User
 
@@ -211,8 +211,15 @@ class CardMachineOut(BaseModel):
 
 
 @router.get("/card-machines", response_model=list[CardMachineOut])
-def list_card_machines(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(CardMachine).filter(CardMachine.is_active == True).all()
+def list_card_machines(
+    active_only: bool = Query(False),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    q = db.query(CardMachine).order_by(CardMachine.name)
+    if active_only:
+        q = q.filter(CardMachine.is_active == True)
+    return q.all()
 
 
 @router.post("/card-machines", response_model=CardMachineOut, status_code=status.HTTP_201_CREATED)
@@ -222,6 +229,53 @@ def create_card_machine(data: CardMachineIn, db: Session = Depends(get_db), _: U
     db.commit()
     db.refresh(machine)
     return machine
+
+
+@router.put("/card-machines/{machine_id}", response_model=CardMachineOut)
+def update_card_machine(
+    machine_id: int, data: CardMachineIn,
+    db: Session = Depends(get_db), _: User = Depends(require_admin),
+):
+    machine = db.query(CardMachine).filter(CardMachine.id == machine_id).first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Maquininha nao encontrada")
+    machine.name = data.name
+    machine.debit_fee_percent = data.debit_fee_percent
+    machine.credit_fee_percent = data.credit_fee_percent
+    db.commit()
+    db.refresh(machine)
+    return machine
+
+
+@router.patch("/card-machines/{machine_id}/toggle", response_model=CardMachineOut)
+def toggle_card_machine(
+    machine_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    machine = db.query(CardMachine).filter(CardMachine.id == machine_id).first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Maquininha nao encontrada")
+    machine.is_active = not machine.is_active
+    db.commit()
+    db.refresh(machine)
+    return machine
+
+
+@router.delete("/card-machines/{machine_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_card_machine(
+    machine_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    machine = db.query(CardMachine).filter(CardMachine.id == machine_id).first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Maquininha nao encontrada")
+    has_sales = db.query(Sale).filter(Sale.card_machine_id == machine_id).first()
+    if has_sales:
+        raise HTTPException(status_code=400, detail="Maquininha possui vendas. Desative-a em vez de excluir.")
+    db.delete(machine)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------

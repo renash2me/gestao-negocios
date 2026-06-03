@@ -29,7 +29,7 @@ export function CheckoutModal({ cart, total, pdvLocation, onConfirm, onClose }: 
 
   const { data: machines = [] } = useQuery<CardMachine[]>({
     queryKey: ['card-machines'],
-    queryFn: () => api.get('/costs/card-machines').then((r) => r.data),
+    queryFn: () => api.get('/costs/card-machines?active_only=true').then((r) => r.data),
   })
 
   // Busca clientes do location do PDV + busca por nome
