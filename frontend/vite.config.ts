@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Gestão de Negócios',
         short_name: 'Gestão',
         description: 'PDV e BI para negócios de doces',
-        theme_color: '#1a1a2e',
-        background_color: '#ffffff',
+        theme_color: '#7d3c52',
+        background_color: '#fdf6f0',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/pdv',
@@ -23,25 +23,20 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Cacheia assets estáticos
+        // CRÍTICO: ativa o novo SW imediatamente, sem esperar fechar abas
+        skipWaiting: true,
+        clientsClaim: true,
+        // Cacheia assets estáticos (atualiza automaticamente quando muda o hash)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // APIs: sempre tenta rede primeiro, cai pro cache se offline
         runtimeCaching: [
           {
-            // Produtos: cacheia com stale-while-revalidate (funciona offline)
-            urlPattern: /\/api\/v1\/products/,
-            handler: 'StaleWhileRevalidate',
+            urlPattern: /\/api\/v1\/.*/,
+            handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-products',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 }, // 24h
-            },
-          },
-          {
-            // Maquininhas: cacheia localmente
-            urlPattern: /\/api\/v1\/costs\/card-machines/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'api-card-machines',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 dias
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxAgeSeconds: 60 * 60 * 24 },
             },
           },
         ],

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text, inspect
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import engine, Base, SessionLocal
@@ -15,56 +15,24 @@ logger = logging.getLogger("gestao")
 
 
 def run_migrations():
-    """Migracoes incrementais — idempotentes."""
+    """Migracoes incrementais via ALTER TABLE IF NOT EXISTS — sempre seguro rodar."""
+    migrations = [
+        # Colunas adicionadas ao longo do desenvolvimento
+        "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS location VARCHAR(200)",
+        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_price NUMERIC(10,2)",
+        "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_weight NUMERIC(10,4)",
+        # Modelo Recipe separado de Product
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS recipe_id INTEGER REFERENCES recipes(id)",
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS units_per_batch INTEGER DEFAULT 1",
+    ]
     db = SessionLocal()
-    inspector = inspect(engine)
     try:
-        existing = inspector.get_table_names()
-
-        # Migracoes de colunas simples
-        simple = [
-            "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
-            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS location VARCHAR(200)",
-            "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_price NUMERIC(10,2)",
-            "ALTER TABLE ingredient_price_history ADD COLUMN IF NOT EXISTS package_weight NUMERIC(10,4)",
-        ]
-        for sql in simple:
+        for sql in migrations:
             try:
                 db.execute(text(sql))
-            except Exception:
-                pass
-
-        # Migracao estrutural: Recipe separada de Product
-        if "recipes" not in existing:
-            logger.info("Migrando para modelo Recipe separado...")
-            # Cria tabela recipes
-            db.execute(text("""
-                CREATE TABLE recipes (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(150) NOT NULL,
-                    description TEXT,
-                    prep_time_minutes INTEGER DEFAULT 0,
-                    yield_units INTEGER DEFAULT 1,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            """))
-            # Adiciona colunas no products
-            db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS recipe_id INTEGER REFERENCES recipes(id)"))
-            db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS units_per_batch INTEGER DEFAULT 1"))
-            # Recria recipe_items apontando para recipes
-            db.execute(text("DROP TABLE IF EXISTS recipe_items CASCADE"))
-            db.execute(text("""
-                CREATE TABLE recipe_items (
-                    id SERIAL PRIMARY KEY,
-                    recipe_id INTEGER NOT NULL REFERENCES recipes(id),
-                    ingredient_id INTEGER NOT NULL REFERENCES ingredients(id),
-                    quantity NUMERIC(10,4) NOT NULL,
-                    UNIQUE(recipe_id, ingredient_id)
-                )
-            """))
-            logger.info("Migracao Recipe concluida. Receitas antigas precisam ser recadastradas.")
-
+            except Exception as e:
+                logger.debug(f"Migracao ignorada (esperado se ja existe): {e}")
         db.commit()
         logger.info("Migracoes executadas com sucesso")
     except Exception as e:
@@ -99,7 +67,9 @@ def seed_admin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # create_all cria tabelas novas (recipes, etc) se nao existirem
     Base.metadata.create_all(bind=engine)
+    # run_migrations adiciona colunas em tabelas existentes
     run_migrations()
     seed_admin()
     yield
