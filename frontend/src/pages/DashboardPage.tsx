@@ -13,62 +13,83 @@ const PERIOD_OPTIONS = [
   { label: '365 dias', value: 365 },
 ]
 
+const DASHBOARD_CSS = `
+  .dash-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 768px) {
+    .dash-grid-2 { grid-template-columns: 1fr; }
+    .dash-wrap { padding: 16px 14px !important; }
+    .dash-period-selector { width: 100%; }
+    .dash-period-selector button { flex: 1; padding: 8px 10px !important; font-size: 12px !important; }
+  }
+`
+
 export function DashboardPage() {
   const [days, setDays] = useState(30)
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Painel de Gestão</h1>
-        <div style={styles.periodSelector}>
-          {PERIOD_OPTIONS.map((p) => (
-            <button
-              key={p.value}
-              style={{ ...styles.periodBtn, ...(days === p.value ? styles.periodBtnActive : {}) }}
-              onClick={() => setDays(p.value)}
-            >
-              {p.label}
-            </button>
-          ))}
+    <>
+      <style>{DASHBOARD_CSS}</style>
+      <div className="dash-wrap" style={styles.wrap}>
+        <div style={styles.header}>
+          <h1 style={styles.title}>Painel de Gestão</h1>
+          <div className="dash-period-selector" style={styles.periodSelector}>
+            {PERIOD_OPTIONS.map((p) => (
+              <button
+                key={p.value}
+                style={{ ...styles.periodBtn, ...(days === p.value ? styles.periodBtnActive : {}) }}
+                onClick={() => setDays(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <SummaryCards days={days} />
+
+        <div style={styles.row}>
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Vendas por dia</h3>
+            <SalesTimeline days={days} />
+          </div>
+        </div>
+
+        <div className="dash-grid-2">
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Produtos mais vendidos</h3>
+            <TopProductsChart days={days} />
+          </div>
+        </div>
+
+        <div className="dash-grid-2">
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Lucratividade por produto</h3>
+            <ProfitByProduct days={days} />
+          </div>
+        </div>
+
+        <div className="dash-grid-2">
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Melhores clientes</h3>
+            <TopCustomersTable days={days} />
+          </div>
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Clientes inativos</h3>
+            <InactiveCustomers inactiveDays={days} />
+          </div>
         </div>
       </div>
-
-      <SummaryCards days={days} />
-
-      <div style={styles.row}>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Vendas por dia</h3>
-          <SalesTimeline days={days} />
-        </div>
-      </div>
-
-      <div style={styles.row2}>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Produtos mais vendidos</h3>
-          <TopProductsChart days={days} />
-        </div>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Lucratividade por produto</h3>
-          <ProfitByProduct days={days} />
-        </div>
-      </div>
-
-      <div style={styles.row2}>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Melhores clientes</h3>
-          <TopCustomersTable days={days} />
-        </div>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Clientes inativos</h3>
-          <InactiveCustomers inactiveDays={days} />
-        </div>
-      </div>
-    </div>
+    </>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  wrap: { padding: '28px 32px', maxWidth: '1200px' },
+  wrap: { padding: '28px 32px', maxWidth: '1200px', width: '100%' },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -100,12 +121,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'var(--berry)',
   },
   row: { marginBottom: '20px' },
-  row2: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '20px',
-  },
   card: {
     background: 'var(--white)',
     borderRadius: 'var(--radius)',

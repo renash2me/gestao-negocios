@@ -58,7 +58,10 @@ export function AdminLayout() {
           <button onClick={() => setMenuOpen(!menuOpen)} style={s.hamburger}>
             <span style={s.hLine} /><span style={s.hLine} /><span style={s.hLine} />
           </button>
-          <span style={s.mobileTitle}>Flores &amp; Doces</span>
+          <div style={s.mobileBrand}>
+            <img src="/logo-flores-doces-sm.jpg" alt="Flores & Doces" style={s.mobileLogo} />
+            <span style={s.mobileTitle}>Flores &amp; Doces</span>
+          </div>
           <SyncBadge />
         </header>
 
@@ -66,7 +69,7 @@ export function AdminLayout() {
 
         <aside className={`adm-sidebar ${menuOpen ? 'open' : ''}`}>
           <div style={s.brand}>
-            <span style={{ fontSize: '28px' }}>✿</span>
+            <img src="/logo-flores-doces.jpg" alt="Flores & Doces" style={s.logo} />
             <div>
               <div style={s.brandName}>Flores &amp; Doces</div>
               <div style={{ fontSize: '11px', opacity: 0.7 }}>Administração</div>
@@ -112,10 +115,22 @@ const s: Record<string, React.CSSProperties> = {
     padding: '8px', background: 'none', border: 'none',
   },
   hLine: { display: 'block', width: '22px', height: '2px', background: 'var(--white)', borderRadius: '1px' },
+  mobileBrand: {
+    display: 'flex', alignItems: 'center', gap: '8px',
+  },
+  mobileLogo: {
+    width: '32px', height: '32px', borderRadius: '50%',
+    objectFit: 'cover', background: 'var(--white)',
+  },
   mobileTitle: { fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 600 },
   brand: {
     display: 'flex', alignItems: 'center', gap: '12px',
     padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.12)', marginBottom: '16px',
+  },
+  logo: {
+    width: '44px', height: '44px', borderRadius: '50%',
+    objectFit: 'cover', background: 'var(--white)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
   },
   brandName: { fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 600 },
   nav: { display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, padding: '0 8px', overflowY: 'auto' },
