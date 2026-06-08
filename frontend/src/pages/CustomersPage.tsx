@@ -4,6 +4,8 @@ import { api } from '../lib/api'
 import { formatPhone, maskPhone, cleanPhone } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
+import { LocationAutocomplete } from '../components/LocationAutocomplete'
 import type { Customer } from '../lib/types'
 
 export function CustomersPage() {
@@ -27,8 +29,8 @@ export function CustomersPage() {
   })
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Clientes</h1>
         <button style={page.addBtn} onClick={() => setAdding(true)}>+ Novo cliente</button>
       </div>
@@ -38,7 +40,7 @@ export function CustomersPage() {
       ) : customers.length === 0 ? (
         <div style={page.empty}>Nenhum cliente cadastrado.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Nome</th>
@@ -59,7 +61,7 @@ export function CustomersPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {(adding || editing) && (
@@ -116,7 +118,7 @@ function CustomerForm({ customer, onClose, onSave, saving }: {
         />
       </FormField>
       <FormField label="Local / Prédio (opcional)">
-        <input style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex: Ed. Villa Lobos" />
+        <LocationAutocomplete value={location} onChange={setLocation} />
       </FormField>
       <FormField label="Observações">
         <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />

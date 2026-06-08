@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { SyncBadge } from './SyncBadge'
+import { PAGE_CSS } from './adminStyles'
 
 const NAV_ITEMS = [
   { to: '/admin/dashboard',     label: '📊 Painel de Gestão' },
@@ -23,7 +24,7 @@ export function AdminLayout() {
   return (
     <>
       <style>{`
-        .adm-wrap { min-height: 100vh; display: flex; }
+        .adm-wrap { min-height: 100vh; display: flex; max-width: 100%; overflow-x: hidden; }
         .adm-header {
           display: none; position: fixed; top: 0; left: 0; right: 0; height: 56px;
           background: var(--berry-dark); color: var(--white); align-items: center;
@@ -35,7 +36,9 @@ export function AdminLayout() {
           flex-direction: column; padding: 20px 0; z-index: 40;
           transition: transform 0.25s ease;
         }
-        .adm-main { margin-left: 240px; flex: 1; min-height: 100vh; }
+        /* min-width: 0 é essencial: sem ele um filho flex (tabela, grid)
+           pode forçar o main a ficar mais largo que a viewport. */
+        .adm-main { margin-left: 240px; flex: 1; min-width: 0; min-height: 100vh; }
         .adm-overlay { display: none; }
         .adm-desktop-sync { display: block; }
 
@@ -47,6 +50,7 @@ export function AdminLayout() {
           .adm-overlay.open { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 35; }
           .adm-desktop-sync { display: none; }
         }
+        ${PAGE_CSS}
       `}</style>
 
       <div className="adm-wrap">

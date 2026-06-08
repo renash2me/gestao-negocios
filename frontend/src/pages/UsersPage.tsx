@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
 
 interface UserOut {
   id: number
@@ -33,8 +34,8 @@ export function UsersPage() {
   })
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Usuários</h1>
         <button style={page.addBtn} onClick={() => setAdding(true)}>+ Novo usuário</button>
       </div>
@@ -44,7 +45,7 @@ export function UsersPage() {
       ) : users.length === 0 ? (
         <div style={page.empty}>Nenhum usuário cadastrado.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Nome</th>
@@ -79,7 +80,7 @@ export function UsersPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {adding && (

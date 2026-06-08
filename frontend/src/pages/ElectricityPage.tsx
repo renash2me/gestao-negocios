@@ -5,6 +5,7 @@ import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
 
 interface ElectricityBill {
   id: number
@@ -36,8 +37,8 @@ export function ElectricityPage() {
   }
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Conta de Luz</h1>
         <button style={page.addBtn} onClick={() => setAdding(true)}>+ Registrar conta</button>
       </div>
@@ -47,7 +48,7 @@ export function ElectricityPage() {
       ) : bills.length === 0 ? (
         <div style={page.empty}>Nenhuma conta registrada.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Mês</th>
@@ -68,7 +69,7 @@ export function ElectricityPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {adding && (

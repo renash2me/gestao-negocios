@@ -5,6 +5,7 @@ import { formatDecimal } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
 import type { CardMachine } from '../lib/types'
 
 export function MachinesPage() {
@@ -44,8 +45,8 @@ export function MachinesPage() {
   })
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Maquininhas</h1>
         <button style={page.addBtn} onClick={() => setAdding(true)}>+ Nova maquininha</button>
       </div>
@@ -55,7 +56,7 @@ export function MachinesPage() {
       ) : machines.length === 0 ? (
         <div style={page.empty}>Nenhuma maquininha cadastrada.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Nome</th>
@@ -91,7 +92,7 @@ export function MachinesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {(adding || editing) && (

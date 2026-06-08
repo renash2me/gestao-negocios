@@ -5,6 +5,8 @@ import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
+import { RecipeCostHistoryModal } from '../components/RecipeCostHistoryModal'
 
 interface RecipeItem {
   ingredient_id: number
@@ -43,6 +45,7 @@ export function RecipesPage() {
   const qc = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
+  const [historyFor, setHistoryFor] = useState<Recipe | null>(null)
 
   const { data: recipes = [], isLoading } = useQuery<Recipe[]>({
     queryKey: ['recipes'],
@@ -76,8 +79,8 @@ export function RecipesPage() {
   function closeForm() { setFormOpen(false); setEditing(null) }
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Receitas / Bateladas</h1>
         <button style={page.addBtn} onClick={() => { setEditing(null); setFormOpen(true) }}>+ Nova receita</button>
       </div>
@@ -87,7 +90,7 @@ export function RecipesPage() {
       ) : recipes.length === 0 ? (
         <div style={page.empty}>Nenhuma receita cadastrada. Cadastre os insumos primeiro e depois crie uma receita.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Receita</th>
@@ -123,6 +126,7 @@ export function RecipesPage() {
                 </td>
                 <td style={page.td}>
                   <button style={page.actionBtn} onClick={() => { setEditing(r); setFormOpen(true) }}>Editar</button>
+                  <button style={page.actionBtn} onClick={() => setHistoryFor(r)}>Histórico</button>
                   <button
                     style={{ ...page.actionBtn, color: 'var(--danger)' }}
                     onClick={() => { if (confirm(`Excluir "${r.name}"?`)) remove.mutate(r.id) }}
@@ -133,7 +137,7 @@ export function RecipesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {formOpen && (
@@ -142,6 +146,14 @@ export function RecipesPage() {
           onClose={closeForm}
           onSave={(data) => editing ? update.mutate({ id: editing.id, ...data }) : create.mutate(data)}
           saving={create.isPending || update.isPending}
+        />
+      )}
+
+      {historyFor && (
+        <RecipeCostHistoryModal
+          recipeId={historyFor.id}
+          recipeName={historyFor.name}
+          onClose={() => setHistoryFor(null)}
         />
       )}
     </div>

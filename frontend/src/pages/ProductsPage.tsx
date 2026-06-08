@@ -5,6 +5,7 @@ import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
 
 interface Product {
   id: number
@@ -62,8 +63,8 @@ export function ProductsPage() {
   function closeForm() { setFormOpen(false); setEditing(null) }
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Produtos</h1>
         <button style={page.addBtn} onClick={() => { setEditing(null); setFormOpen(true) }}>+ Novo produto</button>
       </div>
@@ -73,7 +74,7 @@ export function ProductsPage() {
       ) : products.length === 0 ? (
         <div style={page.empty}>Nenhum produto cadastrado. Cadastre uma receita primeiro.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Produto</th>
@@ -125,7 +126,7 @@ export function ProductsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {formOpen && (

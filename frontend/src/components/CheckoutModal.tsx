@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatBRL, formatPhone } from '../lib/format'
 import type { CartItem, CardMachine, Customer, PaymentMethod } from '../lib/types'
@@ -20,12 +20,16 @@ interface Props {
 }
 
 export function CheckoutModal({ cart, total, pdvLocation, onConfirm, onClose }: Props) {
+  const qc = useQueryClient()
   const [payment, setPayment] = useState<PaymentMethod | null>(null)
   const [machineId, setMachineId] = useState<number | null>(null)
   const [customerId, setCustomerId] = useState<number | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [quickAdd, setQuickAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newComplement, setNewComplement] = useState('')
 
   const { data: machines = [] } = useQuery<CardMachine[]>({
     queryKey: ['card-machines'],
@@ -41,6 +45,33 @@ export function CheckoutModal({ cart, total, pdvLocation, onConfirm, onClose }: 
       return api.get(`/customers/?${params}`).then((r) => r.data)
     },
   })
+
+  // Cadastro rápido de cliente direto no PDV.
+  // Herda o local selecionado no PDV; nome e complemento são opcionais.
+  const createCustomer = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      api.post('/customers/', data).then((r) => r.data as Customer),
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ['customers-checkout'] })
+      qc.invalidateQueries({ queryKey: ['customers'] })
+      setCustomerId(created.id)
+      setCustomerSearch(created.name)
+      setQuickAdd(false)
+      setNewName('')
+      setNewComplement('')
+      setShowSuggestions(false)
+    },
+  })
+
+  function saveQuickCustomer() {
+    const name = [newName.trim(), newComplement.trim()].filter(Boolean).join(' ')
+    createCustomer.mutate({
+      name: name || 'Cliente sem nome',
+      phone: null,
+      location: pdvLocation || null,
+      notes: null,
+    })
+  }
 
   const filtered = customerSearch.length > 0
     ? customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase()))
@@ -157,9 +188,56 @@ export function CheckoutModal({ cart, total, pdvLocation, onConfirm, onClose }: 
               </div>
             )}
           </div>
-          {!customerId && customerSearch.length === 0 && (
-            <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginTop: '4px' }}>
-              Sem cliente selecionado
+          {!customerId && customerSearch.length === 0 && !quickAdd && (
+            <div style={styles.customerFooter}>
+              <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
+                Sem cliente selecionado
+              </span>
+              <button style={styles.quickAddLink} onClick={() => setQuickAdd(true)}>
+                + Cadastrar novo
+              </button>
+            </div>
+          )}
+
+          {quickAdd && (
+            <div style={styles.quickAddBox}>
+              <div style={styles.quickAddRow}>
+                <input
+                  style={{ ...styles.searchInput, padding: '12px 14px', flex: 2 }}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nome (ex: Renato)"
+                  autoComplete="off"
+                  autoFocus
+                />
+                <input
+                  style={{ ...styles.searchInput, padding: '12px 14px', flex: 1 }}
+                  value={newComplement}
+                  onChange={(e) => setNewComplement(e.target.value)}
+                  placeholder="Apto (88A)"
+                  autoComplete="off"
+                />
+              </div>
+              {pdvLocation && (
+                <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
+                  Será cadastrado em <strong>{pdvLocation}</strong>
+                </div>
+              )}
+              <div style={styles.quickAddActions}>
+                <button
+                  style={styles.quickAddCancel}
+                  onClick={() => { setQuickAdd(false); setNewName(''); setNewComplement('') }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  style={styles.quickAddSave}
+                  onClick={saveQuickCustomer}
+                  disabled={createCustomer.isPending}
+                >
+                  {createCustomer.isPending ? 'Salvando...' : 'Salvar cliente'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -311,6 +389,50 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottomColor: 'var(--cream)',
   },
   empty: { color: 'var(--ink-soft)', fontSize: '14px', fontStyle: 'italic' },
+  customerFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: '6px',
+  },
+  quickAddLink: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--berry)',
+    background: 'none',
+    border: 'none',
+    padding: '4px 0',
+    cursor: 'pointer',
+  },
+  quickAddBox: {
+    marginTop: '10px',
+    padding: '12px',
+    background: 'var(--cream)',
+    borderRadius: 'var(--radius-sm)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  quickAddRow: { display: 'flex', gap: '8px' },
+  quickAddActions: { display: 'flex', gap: '8px', justifyContent: 'flex-end' },
+  quickAddCancel: {
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: 600,
+    color: 'var(--ink-soft)',
+    background: 'var(--white)',
+    border: '2px solid var(--cream-dark)',
+    borderRadius: 'var(--radius-sm)',
+  },
+  quickAddSave: {
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: 700,
+    color: 'var(--white)',
+    background: 'var(--berry)',
+    border: 'none',
+    borderRadius: 'var(--radius-sm)',
+  },
   confirmBtn: {
     width: '100%',
     padding: '18px',

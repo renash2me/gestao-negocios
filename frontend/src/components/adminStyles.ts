@@ -1,12 +1,39 @@
 import type React from 'react'
 
+/**
+ * Classe CSS responsiva para o container das páginas de admin.
+ * Injetada uma vez via <PageStyles/>. Usar className="adm-page" em vez
+ * do antigo style={page.wrap} para que o padding reduza no mobile.
+ */
+export const PAGE_CSS = `
+  .adm-page {
+    padding: 28px 32px;
+    max-width: 960px;
+    width: 100%;
+  }
+  .adm-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 768px) {
+    .adm-page { padding: 16px 14px; }
+    .adm-page-header { margin-bottom: 16px; }
+  }
+`
+
 export const page: Record<string, React.CSSProperties> = {
-  wrap: { padding: '28px 32px', maxWidth: '960px' },
+  wrap: { padding: '28px 32px', maxWidth: '960px', width: '100%' },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '24px',
+    gap: '12px',
+    flexWrap: 'wrap',
   },
   title: {
     fontFamily: 'var(--font-display)',

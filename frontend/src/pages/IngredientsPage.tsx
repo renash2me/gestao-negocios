@@ -5,6 +5,7 @@ import { formatDecimal } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page } from '../components/adminStyles'
+import { TableScroll } from '../components/TableScroll'
 
 interface Ingredient {
   id: number
@@ -59,8 +60,8 @@ export function IngredientsPage() {
   })
 
   return (
-    <div style={page.wrap}>
-      <div style={page.header}>
+    <div className="adm-page">
+      <div className="adm-page-header">
         <h1 style={page.title}>Insumos</h1>
         <button style={page.addBtn} onClick={() => setAdding(true)}>+ Novo insumo</button>
       </div>
@@ -70,7 +71,7 @@ export function IngredientsPage() {
       ) : ingredients.length === 0 ? (
         <div style={page.empty}>Nenhum insumo cadastrado.</div>
       ) : (
-        <table style={page.table}>
+        <TableScroll><table style={page.table}>
           <thead>
             <tr>
               <th style={page.th}>Nome</th>
@@ -111,7 +112,7 @@ export function IngredientsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
       )}
 
       {adding && (
