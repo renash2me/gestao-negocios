@@ -4,7 +4,7 @@ from enum import Enum as PyEnum
 
 from sqlalchemy import (
     Boolean, DateTime, ForeignKey, Integer, Numeric,
-    String, Text, Enum, UniqueConstraint, func
+    String, Text, Enum, UniqueConstraint, JSON, func
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -161,6 +161,10 @@ class Recipe(Base):
         back_populates="recipe", cascade="all, delete-orphan"
     )
     products: Mapped[list["Product"]] = relationship(back_populates="recipe")
+    cost_history: Mapped[list["RecipeCostHistory"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan",
+        order_by="RecipeCostHistory.recorded_at.asc()",
+    )
 
 
 class RecipeItem(Base):
@@ -176,6 +180,28 @@ class RecipeItem(Base):
 
     recipe: Mapped["Recipe"] = relationship(back_populates="items")
     ingredient: Mapped["Ingredient"] = relationship(back_populates="recipe_items")
+
+
+class RecipeCostHistory(Base):
+    """Snapshot do custo de uma receita num instante.
+
+    Gravado sempre que a receita é editada ou quando o preço de um
+    insumo usado por ela muda. O campo breakdown guarda o custo de cada
+    insumo no momento, permitindo ver qual insumo empurrou o custo.
+    """
+    __tablename__ = "recipe_cost_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"), index=True)
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    cost_per_unit: Mapped[Decimal] = mapped_column(Numeric(10, 4))
+    # [{"ingredient_id":1,"name":"Leite condensado","unit":"g",
+    #   "quantity":"395","unit_cost":"0.0210","line_cost":"8.30"}, ...]
+    breakdown: Mapped[list] = mapped_column(JSON, default=list)
+    reason: Mapped[str | None] = mapped_column(String(50))  # "edicao" | "preco_insumo"
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    recipe: Mapped["Recipe"] = relationship(back_populates="cost_history")
 
 
 # ---------------------------------------------------------------------------

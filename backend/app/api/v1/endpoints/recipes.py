@@ -1,14 +1,60 @@
 from decimal import Decimal
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models.models import Recipe, RecipeItem, Ingredient, Product
+from app.models.models import Recipe, RecipeItem, RecipeCostHistory, Ingredient, Product
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.models.models import User
 
 router = APIRouter()
+
+
+def _compute_breakdown(recipe: Recipe) -> tuple[Decimal, Decimal, list[dict]]:
+    """Calcula custo total, custo por unidade e o detalhamento por insumo."""
+    total = Decimal("0")
+    breakdown: list[dict] = []
+    for item in recipe.items:
+        unit_cost = item.ingredient.avg_price_per_unit
+        line = (item.quantity * unit_cost).quantize(Decimal("0.0001"))
+        total += line
+        breakdown.append({
+            "ingredient_id": item.ingredient_id,
+            "name": item.ingredient.name,
+            "unit": item.ingredient.unit,
+            "quantity": str(item.quantity),
+            "unit_cost": str(unit_cost),
+            "line_cost": str(line.quantize(Decimal("0.01"))),
+        })
+    total = total.quantize(Decimal("0.01"))
+    cpu = (total / recipe.yield_units).quantize(Decimal("0.0001")) if recipe.yield_units > 0 else Decimal("0")
+    return total, cpu, breakdown
+
+
+def snapshot_recipe_cost(recipe: Recipe, db: Session, reason: str) -> None:
+    """Grava um ponto no histórico de custo — só se o total mudou desde o último.
+
+    `recipe` deve vir com items+ingredient carregados.
+    Não dá commit; o chamador é responsável por isso.
+    """
+    total, cpu, breakdown = _compute_breakdown(recipe)
+    last = (
+        db.query(RecipeCostHistory)
+        .filter(RecipeCostHistory.recipe_id == recipe.id)
+        .order_by(RecipeCostHistory.recorded_at.desc())
+        .first()
+    )
+    if last is not None and last.total_cost == total:
+        return  # sem mudança de custo, não polui o gráfico
+    db.add(RecipeCostHistory(
+        recipe_id=recipe.id,
+        total_cost=total,
+        cost_per_unit=cpu,
+        breakdown=breakdown,
+        reason=reason,
+    ))
 
 
 class RecipeItemIn(BaseModel):
@@ -116,6 +162,9 @@ def create_recipe(data: RecipeIn, db: Session = Depends(get_db), _: User = Depen
     db.flush()
     for item in data.items:
         db.add(RecipeItem(recipe_id=recipe.id, ingredient_id=item.ingredient_id, quantity=item.quantity))
+    db.flush()
+    db.refresh(recipe)
+    snapshot_recipe_cost(_load_recipe(recipe.id, db), db, reason="edicao")
     db.commit()
     return build_recipe_out(_load_recipe(recipe.id, db))
 
@@ -132,6 +181,8 @@ def update_recipe(recipe_id: int, data: RecipeIn, db: Session = Depends(get_db),
     db.query(RecipeItem).filter(RecipeItem.recipe_id == recipe_id).delete()
     for item in data.items:
         db.add(RecipeItem(recipe_id=recipe_id, ingredient_id=item.ingredient_id, quantity=item.quantity))
+    db.flush()
+    snapshot_recipe_cost(_load_recipe(recipe_id, db), db, reason="edicao")
     db.commit()
     return build_recipe_out(_load_recipe(recipe_id, db))
 
@@ -156,3 +207,33 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db), _: User = Depen
     db.query(RecipeItem).filter(RecipeItem.recipe_id == recipe_id).delete()
     db.delete(recipe)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Histórico de custo da receita
+# ---------------------------------------------------------------------------
+
+class CostHistoryPoint(BaseModel):
+    id: int
+    total_cost: Decimal
+    cost_per_unit: Decimal
+    breakdown: list[dict]
+    reason: str | None
+    recorded_at: datetime
+    model_config = {"from_attributes": True}
+
+
+@router.get("/{recipe_id}/cost-history", response_model=list[CostHistoryPoint])
+def recipe_cost_history(
+    recipe_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Série temporal do custo da receita, com detalhamento por insumo em cada ponto."""
+    _load_recipe(recipe_id, db)  # 404 se não existir
+    return (
+        db.query(RecipeCostHistory)
+        .filter(RecipeCostHistory.recipe_id == recipe_id)
+        .order_by(RecipeCostHistory.recorded_at.asc())
+        .all()
+    )

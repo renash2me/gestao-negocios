@@ -1,14 +1,32 @@
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models.models import Ingredient, IngredientPriceHistory, CardMachine, ElectricityBill, RecipeItem, Sale
+from app.models.models import Ingredient, IngredientPriceHistory, CardMachine, ElectricityBill, RecipeItem, Recipe, Sale
 from app.api.v1.endpoints.auth import get_current_user, require_admin
+from app.api.v1.endpoints.recipes import snapshot_recipe_cost
 from app.models.models import User
 
 router = APIRouter()
+
+
+def _snapshot_recipes_using(ingredient_id: int, db: Session) -> None:
+    """Após mudança de preço de um insumo, registra novo ponto de custo
+    em todas as receitas que o utilizam."""
+    recipe_ids = [
+        rid for (rid,) in db.query(RecipeItem.recipe_id)
+        .filter(RecipeItem.ingredient_id == ingredient_id)
+        .distinct()
+        .all()
+    ]
+    for rid in recipe_ids:
+        recipe = db.query(Recipe).options(
+            selectinload(Recipe.items).selectinload(RecipeItem.ingredient)
+        ).filter(Recipe.id == rid).first()
+        if recipe:
+            snapshot_recipe_cost(recipe, db, reason="preco_insumo")
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +149,8 @@ def register_price(
     ing.last_price_per_unit = price_per_unit
     ing.last_supplier = data.supplier
 
+    db.flush()
+    _snapshot_recipes_using(ingredient_id, db)
     db.commit()
     db.refresh(ing)
     return ing
@@ -170,6 +190,8 @@ def _recalc_ingredient_avg(ingredient_id: int, db: Session):
         ing.avg_price_per_unit = Decimal("0")
         ing.last_price_per_unit = Decimal("0")
         ing.last_supplier = None
+    db.flush()
+    _snapshot_recipes_using(ingredient_id, db)
     db.commit()
 
 

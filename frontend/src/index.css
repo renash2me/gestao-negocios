@@ -40,6 +40,9 @@
 
 html, body, #root {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;     /* impede scroll horizontal acidental da viewport */
 }
 
 body {
@@ -48,6 +51,21 @@ body {
   color: var(--ink);
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Nenhum elemento deve ultrapassar a largura da viewport.
+   Mídia e tabelas são os culpados clássicos do overflow no mobile. */
+img, svg, video, canvas, table {
+  max-width: 100%;
+}
+
+/* Wrapper padrão para tabelas largas: rolam dentro de si mesmas,
+   nunca empurram a página. Usado nas telas de admin. */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 button {
