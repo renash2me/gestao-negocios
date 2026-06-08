@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { formatDecimal, formatBRL } from '../lib/format'
+import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
 import { page, card } from '../components/adminStyles'
