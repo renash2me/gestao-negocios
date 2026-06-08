@@ -96,3 +96,85 @@ export const page: Record<string, React.CSSProperties> = {
   empty: { textAlign: 'center', padding: '40px', color: 'var(--ink-soft)', fontSize: '14px' },
   loading: { textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' },
 }
+
+/* ── Card mobile styles ─────────────────────────────────────── */
+
+export const card: Record<string, React.CSSProperties> = {
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  wrap: {
+    background: 'var(--white)',
+    borderRadius: 'var(--radius)',
+    boxShadow: 'var(--shadow-sm)',
+    padding: '16px',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  name: {
+    fontWeight: 700,
+    fontSize: '15px',
+    color: 'var(--ink)',
+    lineHeight: '1.3',
+    flex: 1,
+    minWidth: 0,
+  },
+  subtitle: {
+    fontSize: '12px',
+    color: 'var(--ink-soft)',
+    marginTop: '2px',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px 16px',
+    marginBottom: '12px',
+  },
+  label: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--ink-soft)',
+    marginBottom: '2px',
+  },
+  value: {
+    fontSize: '14px',
+    fontWeight: 600,
+    color: 'var(--ink)',
+  },
+  valueLarge: {
+    fontSize: '14px',
+    fontWeight: 700,
+    color: 'var(--ink)',
+  },
+  divider: {
+    borderTop: '1px solid var(--cream)',
+    margin: '0 -16px',
+    padding: '0 16px',
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    paddingTop: '12px',
+    borderTop: '1px solid var(--cream)',
+  },
+  kebab: {
+    marginLeft: 'auto',
+    padding: '6px 10px',
+    fontSize: '16px',
+    color: 'var(--ink-soft)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    borderRadius: '6px',
+    lineHeight: 1,
+    letterSpacing: '2px',
+  },
+}

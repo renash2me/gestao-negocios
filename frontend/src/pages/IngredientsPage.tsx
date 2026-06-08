@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { formatDecimal } from '../lib/format'
+import { formatDecimal, formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
-import { page } from '../components/adminStyles'
+import { page, card } from '../components/adminStyles'
 import { TableScroll } from '../components/TableScroll'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface Ingredient {
   id: number
@@ -28,9 +29,11 @@ interface PriceEntry {
 
 export function IngredientsPage() {
   const qc = useQueryClient()
+  const mobile = useIsMobile()
   const [adding, setAdding] = useState(false)
   const [pricingId, setPricingId] = useState<Ingredient | null>(null)
   const [historyId, setHistoryId] = useState<Ingredient | null>(null)
+  const [kebabOpen, setKebabOpen] = useState<number | null>(null)
 
   const { data: ingredients = [], isLoading } = useQuery<Ingredient[]>({
     queryKey: ['ingredients'],
@@ -59,6 +62,110 @@ export function IngredientsPage() {
     onError: (err: any) => alert(err.response?.data?.detail || 'Erro ao excluir'),
   })
 
+  function renderCards() {
+    return (
+      <div style={card.list}>
+        {ingredients.map((i) => (
+          <div key={i.id} style={{ ...card.wrap, ...(i.is_active ? {} : { opacity: 0.55 }) }}>
+            <div style={card.header}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={card.name}>{i.name}</div>
+              </div>
+              <button
+                style={{ ...page.badge, ...(i.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none', flexShrink: 0 }}
+                onClick={() => toggle.mutate(i.id)}
+              >
+                {i.is_active ? 'Ativo' : 'Inativo'}
+              </button>
+            </div>
+            <div style={card.grid}>
+              <div>
+                <div style={card.label}>Preço médio/un.</div>
+                <div style={card.value}>{formatBRL(i.avg_price_per_unit, 4)}</div>
+              </div>
+              <div>
+                <div style={card.label}>Último preço/un.</div>
+                <div style={card.value}>{formatBRL(i.last_price_per_unit, 4)}</div>
+              </div>
+              <div>
+                <div style={card.label}>Unidade</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{i.unit}</div>
+              </div>
+              <div>
+                <div style={card.label}>Fornecedor</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{i.last_supplier || '—'}</div>
+              </div>
+            </div>
+            <div style={card.actions}>
+              <button style={page.actionBtn} onClick={() => setPricingId(i)}>+ Preço</button>
+              <button style={page.actionBtn} onClick={() => setHistoryId(i)}>Histórico</button>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <button style={card.kebab} onClick={() => setKebabOpen(kebabOpen === i.id ? null : i.id)}>⋯</button>
+                {kebabOpen === i.id && (
+                  <div style={kebabMenu}>
+                    <button
+                      style={kebabItem}
+                      onClick={() => { setKebabOpen(null); if (confirm(`Excluir "${i.name}"?`)) remove.mutate(i.id) }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTable() {
+    return (
+      <TableScroll><table style={page.table}>
+        <thead>
+          <tr>
+            <th style={page.th}>Nome</th>
+            <th style={page.th}>Unidade</th>
+            <th style={page.th}>Preço médio/un.</th>
+            <th style={page.th}>Último preço/un.</th>
+            <th style={page.th}>Último fornecedor</th>
+            <th style={page.th}>Status</th>
+            <th style={page.th}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ingredients.map((i) => (
+            <tr key={i.id} style={i.is_active ? {} : { opacity: 0.5 }}>
+              <td style={page.td}>{i.name}</td>
+              <td style={page.td}>{i.unit}</td>
+              <td style={page.td}>{formatBRL(i.avg_price_per_unit, 4)}</td>
+              <td style={page.td}>{formatBRL(i.last_price_per_unit, 4)}</td>
+              <td style={page.td}>{i.last_supplier || '—'}</td>
+              <td style={page.td}>
+                <button
+                  style={{ ...page.badge, ...(i.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none' }}
+                  onClick={() => toggle.mutate(i.id)}
+                >
+                  {i.is_active ? 'Ativo' : 'Inativo'}
+                </button>
+              </td>
+              <td style={page.td}>
+                <button style={page.actionBtn} onClick={() => setPricingId(i)}>+ Preço</button>
+                <button style={page.actionBtn} onClick={() => setHistoryId(i)}>Histórico</button>
+                <button
+                  style={{ ...page.actionBtn, color: 'var(--danger)' }}
+                  onClick={() => { if (confirm(`Excluir "${i.name}"?`)) remove.mutate(i.id) }}
+                >
+                  Excluir
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableScroll>
+    )
+  }
+
   return (
     <div className="adm-page">
       <div className="adm-page-header">
@@ -70,50 +177,7 @@ export function IngredientsPage() {
         <div style={page.loading}>Carregando...</div>
       ) : ingredients.length === 0 ? (
         <div style={page.empty}>Nenhum insumo cadastrado.</div>
-      ) : (
-        <TableScroll><table style={page.table}>
-          <thead>
-            <tr>
-              <th style={page.th}>Nome</th>
-              <th style={page.th}>Unidade</th>
-              <th style={page.th}>Preço médio/un.</th>
-              <th style={page.th}>Último preço/un.</th>
-              <th style={page.th}>Último fornecedor</th>
-              <th style={page.th}>Status</th>
-              <th style={page.th}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ingredients.map((i) => (
-              <tr key={i.id} style={i.is_active ? {} : { opacity: 0.5 }}>
-                <td style={page.td}>{i.name}</td>
-                <td style={page.td}>{i.unit}</td>
-                <td style={page.td}>R$ {formatDecimal(i.avg_price_per_unit)}</td>
-                <td style={page.td}>R$ {formatDecimal(i.last_price_per_unit)}</td>
-                <td style={page.td}>{i.last_supplier || '—'}</td>
-                <td style={page.td}>
-                  <button
-                    style={{ ...page.badge, ...(i.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none' }}
-                    onClick={() => toggle.mutate(i.id)}
-                  >
-                    {i.is_active ? 'Ativo' : 'Inativo'}
-                  </button>
-                </td>
-                <td style={page.td}>
-                  <button style={page.actionBtn} onClick={() => setPricingId(i)}>+ Preço</button>
-                  <button style={page.actionBtn} onClick={() => setHistoryId(i)}>Histórico</button>
-                  <button
-                    style={{ ...page.actionBtn, color: 'var(--danger)' }}
-                    onClick={() => { if (confirm(`Excluir "${i.name}"?`)) remove.mutate(i.id) }}
-                  >
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></TableScroll>
-      )}
+      ) : mobile ? renderCards() : renderTable()}
 
       {adding && (
         <Modal title="Novo insumo" onClose={() => setAdding(false)}>
@@ -140,6 +204,36 @@ export function IngredientsPage() {
     </div>
   )
 }
+
+/* ── Kebab dropdown styles ───────────────────────────── */
+
+const kebabMenu: React.CSSProperties = {
+  position: 'absolute',
+  right: 0,
+  top: '100%',
+  background: 'var(--white)',
+  borderRadius: 'var(--radius-sm)',
+  boxShadow: 'var(--shadow-md)',
+  padding: '4px',
+  zIndex: 10,
+  minWidth: '120px',
+}
+
+const kebabItem: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  padding: '10px 14px',
+  fontSize: '13px',
+  fontWeight: 500,
+  color: 'var(--danger)',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  textAlign: 'left',
+  borderRadius: '6px',
+}
+
+/* ── Sub-forms (unchanged) ───────────────────────────── */
 
 function IngredientForm({ onSave, saving }: {
   onSave: (data: Record<string, unknown>) => void
@@ -193,7 +287,7 @@ function PriceForm({ unit, onSave, saving }: {
 
       {pricePerUnit !== null && (
         <div style={{ padding: '10px 14px', background: 'var(--cream)', borderRadius: 'var(--radius-sm)', marginBottom: '14px', fontSize: '14px' }}>
-          Preço por {unit}: <strong>R$ {pricePerUnit.toFixed(4).replace('.', ',')}</strong>
+          Preço por {unit}: <strong>{formatBRL(pricePerUnit, 4)}</strong>
         </div>
       )}
 
@@ -246,11 +340,11 @@ function PriceHistoryModal({ ingredient, onClose }: { ingredient: Ingredient; on
             }}>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 500 }}>
-                  R$ {formatDecimal(h.price_per_unit)} / {ingredient.unit}
+                  {formatBRL(h.price_per_unit, 4)} / {ingredient.unit}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
                   {h.package_price && h.package_weight
-                    ? `Embalagem: R$ ${Number(h.package_price).toFixed(2).replace('.', ',')} / ${Number(h.package_weight).toFixed(0)} ${ingredient.unit}`
+                    ? `Embalagem: ${formatBRL(Number(h.package_price))} / ${Number(h.package_weight).toFixed(0)} ${ingredient.unit}`
                     : ''
                   }
                   {h.supplier ? ` — ${h.supplier}` : ''}

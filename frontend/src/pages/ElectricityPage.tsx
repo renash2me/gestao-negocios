@@ -4,8 +4,9 @@ import { api } from '../lib/api'
 import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
-import { page } from '../components/adminStyles'
+import { page, card } from '../components/adminStyles'
 import { TableScroll } from '../components/TableScroll'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface ElectricityBill {
   id: number
@@ -16,8 +17,15 @@ interface ElectricityBill {
   notes: string | null
 }
 
+function formatMonth(m: string) {
+  const [year, month] = m.split('-')
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+  return `${months[Number(month) - 1]} ${year}`
+}
+
 export function ElectricityPage() {
   const qc = useQueryClient()
+  const mobile = useIsMobile()
   const [adding, setAdding] = useState(false)
 
   const { data: bills = [], isLoading } = useQuery<ElectricityBill[]>({
@@ -30,10 +38,63 @@ export function ElectricityPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['electricity'] }); setAdding(false) },
   })
 
-  function formatMonth(m: string) {
-    const [year, month] = m.split('-')
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    return `${months[Number(month) - 1]} ${year}`
+  function renderCards() {
+    return (
+      <div style={card.list}>
+        {bills.map((b) => (
+          <div key={b.id} style={card.wrap}>
+            <div style={card.header}>
+              <div style={card.name}>{formatMonth(b.reference_month)}</div>
+              <div style={{ ...card.valueLarge, color: 'var(--ink)' }}>{formatBRL(b.total_cost)}</div>
+            </div>
+            <div style={card.grid}>
+              <div>
+                <div style={card.label}>Consumo</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>
+                  {Number(b.kwh_consumed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kWh
+                </div>
+              </div>
+              <div>
+                <div style={card.label}>Tarifa</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{formatBRL(b.kwh_rate)}/kWh</div>
+              </div>
+            </div>
+            {b.notes && (
+              <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginTop: '-4px' }}>
+                {b.notes}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTable() {
+    return (
+      <TableScroll><table style={page.table}>
+        <thead>
+          <tr>
+            <th style={page.th}>Mês</th>
+            <th style={page.th}>Consumo (kWh)</th>
+            <th style={page.th}>Tarifa (R$/kWh)</th>
+            <th style={page.th}>Total</th>
+            <th style={page.th}>Observações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bills.map((b) => (
+            <tr key={b.id}>
+              <td style={page.td}>{formatMonth(b.reference_month)}</td>
+              <td style={page.td}>{Number(b.kwh_consumed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
+              <td style={page.td}>{formatBRL(b.kwh_rate)}</td>
+              <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(b.total_cost)}</td>
+              <td style={page.td}>{b.notes || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableScroll>
+    )
   }
 
   return (
@@ -47,30 +108,7 @@ export function ElectricityPage() {
         <div style={page.loading}>Carregando...</div>
       ) : bills.length === 0 ? (
         <div style={page.empty}>Nenhuma conta registrada.</div>
-      ) : (
-        <TableScroll><table style={page.table}>
-          <thead>
-            <tr>
-              <th style={page.th}>Mês</th>
-              <th style={page.th}>Consumo (kWh)</th>
-              <th style={page.th}>Tarifa (R$/kWh)</th>
-              <th style={page.th}>Total</th>
-              <th style={page.th}>Observações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bills.map((b) => (
-              <tr key={b.id}>
-                <td style={page.td}>{formatMonth(b.reference_month)}</td>
-                <td style={page.td}>{Number(b.kwh_consumed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
-                <td style={page.td}>{formatBRL(b.kwh_rate)}</td>
-                <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(b.total_cost)}</td>
-                <td style={page.td}>{b.notes || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table></TableScroll>
-      )}
+      ) : mobile ? renderCards() : renderTable()}
 
       {adding && (
         <Modal title="Registrar conta de luz" onClose={() => setAdding(false)}>

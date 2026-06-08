@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
-import { page } from '../components/adminStyles'
+import { page, card } from '../components/adminStyles'
 import { TableScroll } from '../components/TableScroll'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface UserOut {
   id: number
@@ -13,8 +14,22 @@ interface UserOut {
   is_active: boolean
 }
 
+function RoleBadge({ role }: { role: string }) {
+  const isAdmin = role === 'admin'
+  return (
+    <span style={{
+      ...page.badge,
+      background: isAdmin ? '#eeedfe' : 'var(--cream)',
+      color: isAdmin ? '#534ab7' : 'var(--ink-soft)',
+    }}>
+      {isAdmin ? 'Admin' : 'Operador'}
+    </span>
+  )
+}
+
 export function UsersPage() {
   const qc = useQueryClient()
+  const mobile = useIsMobile()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<UserOut | null>(null)
 
@@ -33,6 +48,65 @@ export function UsersPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); setEditing(null) },
   })
 
+  function renderCards() {
+    return (
+      <div style={card.list}>
+        {users.map((u) => (
+          <div key={u.id} style={{ ...card.wrap, ...(u.is_active ? {} : { opacity: 0.55 }) }}>
+            <div style={card.header}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={card.name}>{u.name}</div>
+                <div style={card.subtitle}>{u.email}</div>
+              </div>
+              <span style={{ ...page.badge, ...(u.is_active ? page.badgeActive : page.badgeInactive), flexShrink: 0 }}>
+                {u.is_active ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <RoleBadge role={u.role} />
+            </div>
+            <div style={card.actions}>
+              <button style={page.actionBtn} onClick={() => setEditing(u)}>Editar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTable() {
+    return (
+      <TableScroll><table style={page.table}>
+        <thead>
+          <tr>
+            <th style={page.th}>Nome</th>
+            <th style={page.th}>Email</th>
+            <th style={page.th}>Perfil</th>
+            <th style={page.th}>Status</th>
+            <th style={page.th}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id} style={u.is_active ? {} : { opacity: 0.5 }}>
+              <td style={page.td}>{u.name}</td>
+              <td style={page.td}>{u.email}</td>
+              <td style={page.td}><RoleBadge role={u.role} /></td>
+              <td style={page.td}>
+                <span style={{ ...page.badge, ...(u.is_active ? page.badgeActive : page.badgeInactive) }}>
+                  {u.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+              </td>
+              <td style={page.td}>
+                <button style={page.actionBtn} onClick={() => setEditing(u)}>Editar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableScroll>
+    )
+  }
+
   return (
     <div className="adm-page">
       <div className="adm-page-header">
@@ -44,44 +118,7 @@ export function UsersPage() {
         <div style={page.loading}>Carregando...</div>
       ) : users.length === 0 ? (
         <div style={page.empty}>Nenhum usuário cadastrado.</div>
-      ) : (
-        <TableScroll><table style={page.table}>
-          <thead>
-            <tr>
-              <th style={page.th}>Nome</th>
-              <th style={page.th}>Email</th>
-              <th style={page.th}>Perfil</th>
-              <th style={page.th}>Status</th>
-              <th style={page.th}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} style={u.is_active ? {} : { opacity: 0.5 }}>
-                <td style={page.td}>{u.name}</td>
-                <td style={page.td}>{u.email}</td>
-                <td style={page.td}>
-                  <span style={{
-                    ...page.badge,
-                    background: u.role === 'admin' ? '#eeedfe' : 'var(--cream)',
-                    color: u.role === 'admin' ? '#534ab7' : 'var(--ink-soft)',
-                  }}>
-                    {u.role === 'admin' ? 'Admin' : 'Operador'}
-                  </span>
-                </td>
-                <td style={page.td}>
-                  <span style={{ ...page.badge, ...(u.is_active ? page.badgeActive : page.badgeInactive) }}>
-                    {u.is_active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td style={page.td}>
-                  <button style={page.actionBtn} onClick={() => setEditing(u)}>Editar</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></TableScroll>
-      )}
+      ) : mobile ? renderCards() : renderTable()}
 
       {adding && (
         <Modal title="Novo usuário" onClose={() => setAdding(false)}>

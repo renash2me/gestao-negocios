@@ -4,9 +4,10 @@ import { api } from '../lib/api'
 import { formatBRL } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
 import { NumericInput } from '../components/NumericInput'
-import { page } from '../components/adminStyles'
+import { page, card } from '../components/adminStyles'
 import { TableScroll } from '../components/TableScroll'
 import { RecipeCostHistoryModal } from '../components/RecipeCostHistoryModal'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface RecipeItem {
   ingredient_id: number
@@ -43,9 +44,11 @@ interface ItemInput {
 
 export function RecipesPage() {
   const qc = useQueryClient()
+  const mobile = useIsMobile()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [historyFor, setHistoryFor] = useState<Recipe | null>(null)
+  const [kebabOpen, setKebabOpen] = useState<number | null>(null)
 
   const { data: recipes = [], isLoading } = useQuery<Recipe[]>({
     queryKey: ['recipes'],
@@ -78,6 +81,120 @@ export function RecipesPage() {
 
   function closeForm() { setFormOpen(false); setEditing(null) }
 
+  function renderCards() {
+    return (
+      <div style={card.list}>
+        {recipes.map((r) => (
+          <div key={r.id} style={{ ...card.wrap, ...(r.is_active ? {} : { opacity: 0.55 }) }}>
+            <div style={card.header}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={card.name}>{r.name}</div>
+                {r.description && <div style={card.subtitle}>{r.description}</div>}
+                <div style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                  {r.items.map((i) => `${i.ingredient_name} (${i.quantity} ${i.unit})`).join(' · ')}
+                </div>
+              </div>
+              <button
+                style={{ ...page.badge, ...(r.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none', flexShrink: 0 }}
+                onClick={() => toggle.mutate(r.id)}
+              >
+                {r.is_active ? 'Ativa' : 'Inativa'}
+              </button>
+            </div>
+            <div style={card.grid}>
+              <div>
+                <div style={card.label}>Custo total</div>
+                <div style={card.value}>{formatBRL(r.total_cost)}</div>
+              </div>
+              <div>
+                <div style={card.label}>Custo/unidade</div>
+                <div style={card.valueLarge}>{formatBRL(r.cost_per_unit)}</div>
+              </div>
+              <div>
+                <div style={card.label}>Rendimento</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{r.yield_units} un.</div>
+              </div>
+              <div>
+                <div style={card.label}>Tempo</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{r.prep_time_minutes} min</div>
+              </div>
+            </div>
+            <div style={card.actions}>
+              <button style={page.actionBtn} onClick={() => { setEditing(r); setFormOpen(true) }}>Editar</button>
+              <button style={page.actionBtn} onClick={() => setHistoryFor(r)}>Histórico</button>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <button style={card.kebab} onClick={() => setKebabOpen(kebabOpen === r.id ? null : r.id)}>⋯</button>
+                {kebabOpen === r.id && (
+                  <div style={kebabMenu}>
+                    <button
+                      style={kebabItem}
+                      onClick={() => { setKebabOpen(null); if (confirm(`Excluir "${r.name}"?`)) remove.mutate(r.id) }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTable() {
+    return (
+      <TableScroll><table style={page.table}>
+        <thead>
+          <tr>
+            <th style={page.th}>Receita</th>
+            <th style={page.th}>Rendimento</th>
+            <th style={page.th}>Tempo</th>
+            <th style={page.th}>Custo total</th>
+            <th style={page.th}>Custo/unidade</th>
+            <th style={page.th}>Status</th>
+            <th style={page.th}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recipes.map((r) => (
+            <tr key={r.id} style={r.is_active ? {} : { opacity: 0.5 }}>
+              <td style={page.td}>
+                <div style={{ fontWeight: 600 }}>{r.name}</div>
+                {r.description && <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginTop: '2px' }}>{r.description}</div>}
+                <div style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                  {r.items.map((i) => `${i.ingredient_name} (${i.quantity} ${i.unit})`).join(' · ')}
+                </div>
+              </td>
+              <td style={page.td}>{r.yield_units} un.</td>
+              <td style={page.td}>{r.prep_time_minutes} min</td>
+              <td style={page.td}>{formatBRL(r.total_cost)}</td>
+              <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(r.cost_per_unit)}</td>
+              <td style={page.td}>
+                <button
+                  style={{ ...page.badge, ...(r.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none' }}
+                  onClick={() => toggle.mutate(r.id)}
+                >
+                  {r.is_active ? 'Ativa' : 'Inativa'}
+                </button>
+              </td>
+              <td style={page.td}>
+                <button style={page.actionBtn} onClick={() => { setEditing(r); setFormOpen(true) }}>Editar</button>
+                <button style={page.actionBtn} onClick={() => setHistoryFor(r)}>Histórico</button>
+                <button
+                  style={{ ...page.actionBtn, color: 'var(--danger)' }}
+                  onClick={() => { if (confirm(`Excluir "${r.name}"?`)) remove.mutate(r.id) }}
+                >
+                  Excluir
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableScroll>
+    )
+  }
+
   return (
     <div className="adm-page">
       <div className="adm-page-header">
@@ -89,56 +206,7 @@ export function RecipesPage() {
         <div style={page.loading}>Carregando...</div>
       ) : recipes.length === 0 ? (
         <div style={page.empty}>Nenhuma receita cadastrada. Cadastre os insumos primeiro e depois crie uma receita.</div>
-      ) : (
-        <TableScroll><table style={page.table}>
-          <thead>
-            <tr>
-              <th style={page.th}>Receita</th>
-              <th style={page.th}>Rendimento</th>
-              <th style={page.th}>Tempo</th>
-              <th style={page.th}>Custo total</th>
-              <th style={page.th}>Custo/unidade</th>
-              <th style={page.th}>Status</th>
-              <th style={page.th}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recipes.map((r) => (
-              <tr key={r.id} style={r.is_active ? {} : { opacity: 0.5 }}>
-                <td style={page.td}>
-                  <div style={{ fontWeight: 600 }}>{r.name}</div>
-                  {r.description && <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginTop: '2px' }}>{r.description}</div>}
-                  <div style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '4px' }}>
-                    {r.items.map((i) => `${i.ingredient_name} (${i.quantity} ${i.unit})`).join(' · ')}
-                  </div>
-                </td>
-                <td style={page.td}>{r.yield_units} un.</td>
-                <td style={page.td}>{r.prep_time_minutes} min</td>
-                <td style={page.td}>{formatBRL(r.total_cost)}</td>
-                <td style={{ ...page.td, fontWeight: 600 }}>{formatBRL(r.cost_per_unit)}</td>
-                <td style={page.td}>
-                  <button
-                    style={{ ...page.badge, ...(r.is_active ? page.badgeActive : page.badgeInactive), cursor: 'pointer', border: 'none' }}
-                    onClick={() => toggle.mutate(r.id)}
-                  >
-                    {r.is_active ? 'Ativa' : 'Inativa'}
-                  </button>
-                </td>
-                <td style={page.td}>
-                  <button style={page.actionBtn} onClick={() => { setEditing(r); setFormOpen(true) }}>Editar</button>
-                  <button style={page.actionBtn} onClick={() => setHistoryFor(r)}>Histórico</button>
-                  <button
-                    style={{ ...page.actionBtn, color: 'var(--danger)' }}
-                    onClick={() => { if (confirm(`Excluir "${r.name}"?`)) remove.mutate(r.id) }}
-                  >
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></TableScroll>
-      )}
+      ) : mobile ? renderCards() : renderTable()}
 
       {formOpen && (
         <RecipeForm
@@ -159,6 +227,22 @@ export function RecipesPage() {
     </div>
   )
 }
+
+/* ── Kebab dropdown styles ───────────────────────────── */
+
+const kebabMenu: React.CSSProperties = {
+  position: 'absolute', right: 0, top: '100%',
+  background: 'var(--white)', borderRadius: 'var(--radius-sm)',
+  boxShadow: 'var(--shadow-md)', padding: '4px', zIndex: 10, minWidth: '120px',
+}
+const kebabItem: React.CSSProperties = {
+  display: 'block', width: '100%', padding: '10px 14px',
+  fontSize: '13px', fontWeight: 500, color: 'var(--danger)',
+  background: 'none', border: 'none', cursor: 'pointer',
+  textAlign: 'left', borderRadius: '6px',
+}
+
+/* ── Recipe Form (unchanged) ───────────────────────────── */
 
 function RecipeForm({ recipe, onClose, onSave, saving }: {
   recipe: Recipe | null
@@ -185,7 +269,6 @@ function RecipeForm({ recipe, onClose, onSave, saving }: {
   }
   function removeItem(idx: number) { setItems(items.filter((_, i) => i !== idx)) }
 
-  // Cálculo em tempo real
   const totalCost = items.reduce((sum, item) => {
     const ing = ingredients.find((i) => i.id === Number(item.ingredient_id))
     if (!ing || !item.quantity) return sum

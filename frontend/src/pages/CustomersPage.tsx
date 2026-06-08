@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { formatPhone, maskPhone, cleanPhone } from '../lib/format'
 import { Modal, FormField, inputStyle, btnPrimary } from '../components/Modal'
-import { page } from '../components/adminStyles'
+import { page, card } from '../components/adminStyles'
 import { TableScroll } from '../components/TableScroll'
 import { LocationAutocomplete } from '../components/LocationAutocomplete'
+import { useIsMobile } from '../hooks/useIsMobile'
 import type { Customer } from '../lib/types'
 
 export function CustomersPage() {
   const qc = useQueryClient()
+  const mobile = useIsMobile()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
 
@@ -28,6 +30,60 @@ export function CustomersPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['customers'] }); setEditing(null) },
   })
 
+  function renderCards() {
+    return (
+      <div style={card.list}>
+        {customers.map((c) => (
+          <div key={c.id} style={card.wrap}>
+            <div style={card.header}>
+              <div style={card.name}>{c.name}</div>
+            </div>
+            <div style={card.grid}>
+              <div>
+                <div style={card.label}>Telefone</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{formatPhone(c.phone)}</div>
+              </div>
+              <div>
+                <div style={card.label}>Local / Prédio</div>
+                <div style={{ ...card.value, fontWeight: 500 }}>{c.location || '—'}</div>
+              </div>
+            </div>
+            <div style={card.actions}>
+              <button style={page.actionBtn} onClick={() => setEditing(c)}>Editar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTable() {
+    return (
+      <TableScroll><table style={page.table}>
+        <thead>
+          <tr>
+            <th style={page.th}>Nome</th>
+            <th style={page.th}>Telefone</th>
+            <th style={page.th}>Local / Prédio</th>
+            <th style={page.th}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {customers.map((c) => (
+            <tr key={c.id}>
+              <td style={page.td}>{c.name}</td>
+              <td style={page.td}>{formatPhone(c.phone)}</td>
+              <td style={page.td}>{c.location || '—'}</td>
+              <td style={page.td}>
+                <button style={page.actionBtn} onClick={() => setEditing(c)}>Editar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableScroll>
+    )
+  }
+
   return (
     <div className="adm-page">
       <div className="adm-page-header">
@@ -39,30 +95,7 @@ export function CustomersPage() {
         <div style={page.loading}>Carregando...</div>
       ) : customers.length === 0 ? (
         <div style={page.empty}>Nenhum cliente cadastrado.</div>
-      ) : (
-        <TableScroll><table style={page.table}>
-          <thead>
-            <tr>
-              <th style={page.th}>Nome</th>
-              <th style={page.th}>Telefone</th>
-              <th style={page.th}>Local / Prédio</th>
-              <th style={page.th}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.map((c) => (
-              <tr key={c.id}>
-                <td style={page.td}>{c.name}</td>
-                <td style={page.td}>{formatPhone(c.phone)}</td>
-                <td style={page.td}>{c.location || '—'}</td>
-                <td style={page.td}>
-                  <button style={page.actionBtn} onClick={() => setEditing(c)}>Editar</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table></TableScroll>
-      )}
+      ) : mobile ? renderCards() : renderTable()}
 
       {(adding || editing) && (
         <CustomerForm
